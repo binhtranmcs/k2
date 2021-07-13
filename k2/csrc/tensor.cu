@@ -49,7 +49,7 @@ Shape::Shape(const std::vector<int32_t> &dims)
 }
 
 Shape::Shape(const std::vector<int32_t> &dims,
-             const std::vector<int32_t> strides)
+             const std::vector<int32_t> &strides)
     : num_axes_(static_cast<int32_t>(dims.size())) {
   K2_CHECK_LT(num_axes_, kMaxDim);
   K2_CHECK_EQ(static_cast<int32_t>(strides.size()), num_axes_);
@@ -70,8 +70,7 @@ int64_t Shape::ComputeNumElements() const {
 }
 
 void Shape::GetReachableElems(int64_t *begin_out, int64_t *end_out) const {
-  int64_t begin = 0,
-      end = 1;
+  int64_t begin = 0, end = 1;
   for (int32_t i = 0; i < num_axes_; ++i) {
     if (dims_[i] == 0) {
       goto empty_output;

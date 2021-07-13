@@ -60,9 +60,9 @@ class Shape {
 
   /*
     IsContiguous() has essentially the same meaning as in PyTorch, that
-    strides[i] equals the product of dims[i] for j > i; however, we
-    we allow strides[i] to have any value if dims[i] <= 1 (in this
-    case strides[i] is a don't care.
+    strides[i] equals the product of dims[i] for j > i; however, we allow
+    strides[i] to have any value if dims[i] <= 1 (in this
+    case strides[i] is a don't care).
    */
   bool IsContiguous() const { return is_contiguous_; }
 
@@ -82,7 +82,7 @@ class Shape {
   explicit Shape(const std::vector<int32_t> &dims);
 
   explicit Shape(const std::vector<int32_t> &dims,
-                 const std::vector<int32_t> strides);
+                 const std::vector<int32_t> &strides);
 
   Shape(const Shape &other) = default;
 
@@ -232,7 +232,7 @@ class Tensor {
 
 
     Note: the answer will always be contiguous, i.e. there is a possibility that
-    it will have a different memory layout than the input.  [Internally it will
+    it will have a different memory layout than the input. Internally it will
     call `Contiguous()`.
   */
   Tensor To(ContextPtr ctx) const;
