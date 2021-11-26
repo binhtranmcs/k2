@@ -163,21 +163,26 @@ void AddEpsilonSelfLoops(FsaOrVec &src, FsaOrVec *dest,
          @param[in] search_beam   Beam for frame-synchronous beam pruning,
                     e.g. 20. Smaller is faster, larger is more exact
                     (less pruning). This is the default value; it may be
-                    modified by {min,max}_active which dictate the minimum
-                    or maximum allowed number of active states per frame.
+                    modified by {min,max}_active_states which dictate the
+                    minimum or maximum allowed number of active states per
+                    frame.
          @param[in] output_beam   Beam with which we prune the output (analogous
                          to lattice-beam in Kaldi), e.g. 8.  We discard arcs in
                          the output that are not on a path that's within
                          `output_beam` of the best path of the composed output.
-         @param[in] min_active  Minimum active states allowed per frame; beam
-                         will be decreased if the number of active states falls
-                         below this
-         @param[in] max_active  Maximum active states allowed per frame.
+         @param[in] min_active_states  Minimum active states allowed per frame;
+                         beam will be increased if the number of active states
+                         falls below this.
+         @param[in] max_active_states  Maximum active states allowed per frame.
                          (i.e. at each time-step in the sequences).  Sequence-
                          specific beam will be reduced if more than this number
                          of states are active.  The hash size used per FSA is 4
                          times (this rounded up to a power of 2), so this
                          affects memory consumption.
+         @param[in] max_active_arcs  Maximum active arcs allowed per frame.
+                         (i.e. at each time-step in the sequences).  Sequence-
+                         specific beam will be reduced if more than this number
+                         of arcs are active.
          @param[out] out Output vector of composed, pruned FSAs, with same
                          Dim0() as b_fsas.  Elements of it may be empty if the
                          composition was empty, either intrinsically or due to
@@ -187,7 +192,7 @@ void AddEpsilonSelfLoops(FsaOrVec &src, FsaOrVec *dest,
                          state for those).
          @param[out] arc_map_a  Will be set to a vector with Dim() equal to
                          the number of arcs in `out`, whose elements contain
-                         the corresponding arc_idx01 in a_fsas.
+                         the corresponding arc_idx012 in a_fsas.
          @param[out] arc_map_b  Will be set to a vector with Dim() equal to
                          the number of arcs in `out`, whose elements contain
                          the corresponding arc-index in b_fsas; this arc-index
@@ -196,7 +201,8 @@ void AddEpsilonSelfLoops(FsaOrVec &src, FsaOrVec *dest,
 void IntersectDensePruned(FsaVec &a_fsas, DenseFsaVec &b_fsas,
                           float search_beam, float output_beam,
                           int32_t min_active_states, int32_t max_active_states,
-                          FsaVec *out, Array1<int32_t> *arc_map_a,
+                          int32_t max_active_arcs, FsaVec *out,
+                          Array1<int32_t> *arc_map_a,
                           Array1<int32_t> *arc_map_b);
 
 /* IntersectDense is a version of IntersectDensePruned that does not

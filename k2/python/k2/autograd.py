@@ -357,6 +357,7 @@ class _IntersectDensePrunedFunction(torch.autograd.Function):
                 output_beam: float,
                 min_active_states: int,
                 max_active_states: int,
+                max_active_arcs: int,
                 unused_scores_a: torch.Tensor,
                 unused_scores_b: torch.Tensor,
                 seqframe_idx_name: Optional[str] = None,
@@ -392,6 +393,11 @@ class _IntersectDensePrunedFunction(torch.autograd.Function):
             given frame for any given intersection/composition task. This is
             advisory, in that it will try not to have fewer than this number
             active. Set it to zero if there is no constraint.
+          max_active_arcs:
+            Maximum number of FSA arcs that are allowed to be active on any
+            given frame for any given intersection/composition task. This is
+            advisory, in that it will try not to exceed that but may not always
+            succeed. You can use a very large number if no constraint is needed.
           unused_scores_a:
             It equals to `a_fsas.scores` and its sole purpose is for back
             propagation.
@@ -417,7 +423,8 @@ class _IntersectDensePrunedFunction(torch.autograd.Function):
             search_beam=search_beam,
             output_beam=output_beam,
             min_active_states=min_active_states,
-            max_active_states=max_active_states)
+            max_active_states=max_active_states,
+            max_active_arcs=max_active_arcs)
 
         out_fsa[0] = Fsa(ragged_arc)
 
@@ -465,7 +472,7 @@ class _IntersectDensePrunedFunction(torch.autograd.Function):
 
     @staticmethod
     def backward(ctx, out_fsa_grad: torch.Tensor) \
-            -> Tuple[None, None, None, None, None, None, None, torch.Tensor, torch.Tensor]: # noqa
+            -> Tuple[None, None, None, None, None, None, None, None, torch.Tensor, torch.Tensor]: # noqa
         a_scores, b_scores = ctx.saved_tensors
         arc_map_a = ctx.arc_map_a
         arc_map_b = ctx.arc_map_b
@@ -492,6 +499,7 @@ class _IntersectDensePrunedFunction(torch.autograd.Function):
             None,  # output_beam
             None,  # min_active_states
             None,  # max_active_states
+            None,  # max_active_arcs
             grad_a,  # unused_scores_a
             grad_b,  # unused_scores_b
             None,  # seqframe_idx_name
@@ -647,10 +655,11 @@ class _IntersectDenseFunction(torch.autograd.Function):
 
 def intersect_dense_pruned(a_fsas: Fsa,
                            b_fsas: DenseFsaVec,
-                           search_beam: float,
-                           output_beam: float,
-                           min_active_states: int,
-                           max_active_states: int,
+                           search_beam: float = 20,
+                           output_beam: float = 8,
+                           min_active_states: int = 30,
+                           max_active_states: int = 10000,
+                           max_active_arcs: int = 2500000,
                            seqframe_idx_name: Optional[str] = None,
                            frame_idx_name: Optional[str] = None) -> Fsa:
     '''Intersect array of FSAs on CPU/GPU.
@@ -680,6 +689,11 @@ def intersect_dense_pruned(a_fsas: Fsa,
         Set it to zero if there is no constraint.
       max_active_states:
         Maximum number of FSA states that are allowed to be active on any given
+        frame for any given intersection/composition task. This is advisory,
+        in that it will try not to exceed that but may not always succeed.
+        You can use a very large number if no constraint is needed.
+      max_active_arcs:
+        Maximum number of FSA arcs that are allowed to be active on any given
         frame for any given intersection/composition task. This is advisory,
         in that it will try not to exceed that but may not always succeed.
         You can use a very large number if no constraint is needed.
@@ -716,9 +730,9 @@ def intersect_dense_pruned(a_fsas: Fsa,
     # in `out_fsa[0].scores`
     _IntersectDensePrunedFunction.apply(a_fsas, b_fsas, out_fsa, search_beam,
                                         output_beam, min_active_states,
-                                        max_active_states, a_fsas.scores,
-                                        b_fsas.scores, seqframe_idx_name,
-                                        frame_idx_name)
+                                        max_active_states, max_active_arcs,
+                                        a_fsas.scores, b_fsas.scores,
+                                        seqframe_idx_name, frame_idx_name)
     return out_fsa[0]
 
 

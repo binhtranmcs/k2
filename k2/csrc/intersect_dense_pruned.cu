@@ -133,16 +133,23 @@ class MultiGraphDenseIntersectPruned {
                            intersection/composition task. This is advisory,
                            in that it will try not to exceed that but may not
                            always succeed.  This determines the hash size.
+       @param [in] max_arcs  Maximum number of FSA arcs that are allowed to
+                           be active on any given frame for any given
+                           intersection/composition task. This is advisory,
+                           in that it will try not to exceed that but may not
+                           always succeed.
    */
   MultiGraphDenseIntersectPruned(FsaVec &a_fsas, DenseFsaVec &b_fsas,
                                  float search_beam, float output_beam,
-                                 int32_t min_active, int32_t max_active)
+                                 int32_t min_active, int32_t max_active,
+                                 int32_t max_arcs)
       : a_fsas_(a_fsas),
         b_fsas_(b_fsas),
         search_beam_(search_beam),
         output_beam_(output_beam),
         min_active_(min_active),
         max_active_(max_active),
+        max_arcs_(max_arcs),
         dynamic_beams_(a_fsas.Context(), b_fsas.shape.Dim0(), search_beam),
         forward_semaphore_(1) {
     NVTX_RANGE(K2_FUNC);
@@ -448,14 +455,12 @@ class MultiGraphDenseIntersectPruned {
       oshape = Stack(axis, T + 2, arcs_shapes.data(), &oshape_merge_map);
     }
 
-
     int32_t *oshape_row_ids3 = oshape.RowIds(3).Data(),
             *oshape_row_ids2 = oshape.RowIds(2).Data(),
             *oshape_row_ids1 = oshape.RowIds(1).Data(),
             *oshape_row_splits3 = oshape.RowSplits(3).Data(),
             *oshape_row_splits2 = oshape.RowSplits(2).Data(),
             *oshape_row_splits1 = oshape.RowSplits(1).Data();
-
 
     int32_t num_arcs = oshape.NumElements();
     *arc_map_a = Array1<int32_t>(c_, num_arcs);
@@ -555,11 +560,13 @@ class MultiGraphDenseIntersectPruned {
                   &max_per_fsa);
     const int32_t *arc_end_scores_row_splits1_data =
         arc_end_scores.RowSplits(1).Data();
+    const int32_t *end_scores_per_fsa_row_splits1_data =
+        end_scores_per_fsa.RowSplits(1).Data();
     const float *max_per_fsa_data = max_per_fsa.Data();
     float *dynamic_beams_data = dynamic_beams_.Data();
 
     float default_beam = search_beam_, max_active = max_active_,
-          min_active = min_active_;
+          min_active = min_active_, max_arcs = max_arcs_;
     K2_CHECK_LT(min_active, max_active);
 
     Array1<float> cutoffs(c_, num_fsas);
@@ -571,6 +578,9 @@ class MultiGraphDenseIntersectPruned {
                 dynamic_beam = dynamic_beams_data[i];
           int32_t active_states = arc_end_scores_row_splits1_data[i + 1] -
                                   arc_end_scores_row_splits1_data[i];
+          int32_t active_arcs = end_scores_per_fsa_row_splits1_data[i + 1] -
+                                end_scores_per_fsa_row_splits1_data[i];
+          float state_prune_beam = dynamic_beam, arc_prune_beam = dynamic_beam;
           if (active_states <= max_active) {
             // Not constrained by max_active...
             if (active_states >= min_active || active_states == 0) {
@@ -578,21 +588,33 @@ class MultiGraphDenseIntersectPruned {
               // apply.  Gradually approach 'beam'
               // (Also approach 'beam' if active_states == 0; we might as
               // well, since there is nothing to prune here).
-              dynamic_beam = 0.8 * dynamic_beam + 0.2 * default_beam;
+              state_prune_beam = 0.8 * state_prune_beam + 0.2 * default_beam;
             } else {
               // We violated the min_active constraint -> increase beam
-              if (dynamic_beam < default_beam) dynamic_beam = default_beam;
+              if (state_prune_beam < default_beam)
+                state_prune_beam = default_beam;
               // gradually make the beam larger as long
               // as we are below min_active
-              dynamic_beam *= 1.25;
+              state_prune_beam *= 1.25;
             }
           } else {
             // We violated the max_active constraint -> decrease beam
-            if (dynamic_beam > default_beam) dynamic_beam = default_beam;
+            if (state_prune_beam > default_beam)
+              state_prune_beam = default_beam;
             // Decrease the beam as long as we have more than
             // max_active active states.
-            dynamic_beam *= 0.8;
+            state_prune_beam *= 0.8;
           }
+          // We violated the max_arcs constraint -> decrease beam
+          if (active_arcs > max_arcs) {
+            arc_prune_beam = arc_prune_beam * (max_arcs * 1.0 / active_arcs);
+            if (arc_prune_beam > 0.75 * dynamic_beam)
+              arc_prune_beam = 0.75 * dynamic_beam;
+            if (arc_prune_beam < 0.25 * dynamic_beam)
+              arc_prune_beam = 0.25 * dynamic_beam;
+          }
+          dynamic_beam = state_prune_beam > arc_prune_beam ?
+            arc_prune_beam : state_prune_beam;
           dynamic_beams_data[i] = dynamic_beam;
           cutoffs_data[i] = best_loglike - dynamic_beam;
         });
@@ -1191,7 +1213,7 @@ class MultiGraphDenseIntersectPruned {
 
 
     // contains respectively: row_splits1_ptrs, row_ids1_ptrs,
-    // row_splits1_ptrs, row_splits2_ptrs,
+    // row_splits1_ptrs, row_ids2_ptrs,
     // old_arcs_ptrs (really type ArcInfo*),
     // old_states_ptrs (really type StateInfo*).
     Array1<void*> old_all_ptrs(cpu, num_t * 6);
@@ -1440,6 +1462,7 @@ class MultiGraphDenseIntersectPruned {
   float output_beam_;
   int32_t min_active_;
   int32_t max_active_;
+  int32_t max_arcs_;
   Array1<float> dynamic_beams_;  // dynamic beams (initially just search_beam_
                                  // but change due to max_active/min_active
                                  // constraints).
@@ -1502,13 +1525,14 @@ class MultiGraphDenseIntersectPruned {
 void IntersectDensePruned(FsaVec &a_fsas, DenseFsaVec &b_fsas,
                           float search_beam, float output_beam,
                           int32_t min_active_states, int32_t max_active_states,
-                          FsaVec *out, Array1<int32_t> *arc_map_a,
+                          int32_t max_arcs, FsaVec *out,
+                          Array1<int32_t> *arc_map_a,
                           Array1<int32_t> *arc_map_b) {
   NVTX_RANGE("IntersectDensePruned");
   FsaVec a_vec = FsaToFsaVec(a_fsas);
   MultiGraphDenseIntersectPruned intersector(a_vec, b_fsas, search_beam,
                                              output_beam, min_active_states,
-                                             max_active_states);
+                                             max_active_states, max_arcs);
 
   intersector.Intersect();
   intersector.FormatOutput(out, arc_map_a, arc_map_b);
