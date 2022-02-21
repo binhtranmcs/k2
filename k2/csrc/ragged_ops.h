@@ -243,6 +243,10 @@ RaggedShape Stack(int32_t axis, int32_t src_size, RaggedShape **src,
     out[0] : [ [ x x ] [ x ] ]   split_map[0] : [0, 2, 3]
     out[1] : [ [ x ] [ ] ]       split_map[1] : [1]
  */
+void Unstack(RaggedShape &src, int32_t axis, const std::string empty_pos,
+             std::vector<RaggedShape> *out,
+             std::vector<Array1<int32_t>> *split_map = nullptr);
+
 void Unstack(RaggedShape &src, int32_t axis, std::vector<RaggedShape> *out,
              std::vector<Array1<int32_t>> *split_map = nullptr);
 
@@ -1051,8 +1055,15 @@ Ragged<T> Stack(int32_t axis, int32_t num_srcs, Ragged<T> *src,
  */
 
 template <typename T>
-void Unstack(Ragged<T> src, int32_t axis, std::vector<Ragged<T>> *out,
+void Unstack(Ragged<T> src, int32_t axis, const std::string empty_pos,
+             std::vector<Ragged<T>> *out,
              std::vector<Array1<int32_t>> *split_map = nullptr);
+
+template <typename T>
+void Unstack(Ragged<T> src, int32_t axis, std::vector<Ragged<T>> *out,
+             std::vector<Array1<int32_t>> *split_map = nullptr) {
+  Unstack(src, axis, "right", out, split_map);
+}
 
 /*
    Concatenate a list of Ragged<T> to form a single Ragged<T>.

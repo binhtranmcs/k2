@@ -100,6 +100,14 @@ struct FrameInfo {
 
 using namespace online_intersect_pruned_internal;  // NOLINT
 
+struct DecodeStateInfo {
+  Ragged<StateInfo> states;
+
+  Ragged<ArcInfo> arcs;
+
+  float beam;
+};
+
 /*
    Pruned intersection (a.k.a. composition) that corresponds to decoding for
    speech recognition-type tasks.  Can use either different decoding graphs (one
@@ -148,6 +156,10 @@ class OnlineIntersectDensePruned {
                           last chunk of the whole sequesce.
    */
   void Intersect(std::shared_ptr<DenseFsaVec> &b_fsas, bool is_final = false);
+
+  void Decode(std::shared_ptr<DenseFsaVec> &b_fsas, FsaVec *ofsa,
+              Array1<int32_t> *arc_map_a,
+              std::vector<std::unique_ptr<DecodeStateInfo>> *decode_states);
 
   void BackwardPass();
 

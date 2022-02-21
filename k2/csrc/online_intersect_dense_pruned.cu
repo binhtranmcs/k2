@@ -164,6 +164,140 @@ void OnlineIntersectDensePruned::Intersect(std::shared_ptr<DenseFsaVec> &b_fsas,
       });
 }
 
+void OnlineIntersectDensePruned::Decode(
+    std::shared_ptr<DenseFsaVec> &b_fsas, FsaVec *ofsa,
+    Array1<int32_t> *arc_map_a,
+    std::vector<std::unique_ptr<DecodeStateInfo>> *decode_states) {
+  b_fsas_ = b_fsas;
+  K2_CHECK_EQ(num_seqs_, b_fsas_->shape.Dim0());
+  K2_CHECK_EQ(num_seqs_, static_cast<int32_t>(decode_states->size()));
+
+  std::vector<Ragged<StateInfo> *> seq_states_ptr_vec(num_seqs_);
+  std::vector<Ragged<ArcInfo> *> seq_arcs_ptr_vec(num_seqs_);
+
+  Array1<float> beams(GetCpuContext(), num_seqs_);
+  float *beams_data = beams.Data();
+
+  std::vector<std::unique_ptr<DecodeStateInfo>> init_states;
+  for (int32_t i = 0; i < num_seqs_; ++i) {
+    // initialize
+    if (!decode_states->at(i)) {
+      DecodeStateInfo info;
+      StateInfo sinfo;
+      sinfo.a_fsas_state_idx01 = 0;
+      sinfo.forward_loglike = FloatToOrderedInt(0.0);
+      info.states = Ragged<StateInfo>(
+          RegularRaggedShape(c_, 1, 1),
+          Array1<StateInfo>(c_, std::vector<StateInfo>{sinfo}));
+
+      ArcInfo ainfo;
+      info.arcs = Ragged<ArcInfo>(RaggedShape(c_, "[ [ [ x ] ] ]"),
+          Array1<ArcInfo>(c_, std::vector<ArcInfo>{ainfo}));
+
+      info.beam = search_beam_;
+      decode_states->at(i) = std::make_unique<DecodeStateInfo>(info);
+    }
+    seq_states_ptr_vec[i] = &(decode_states->at(i)->states);
+    seq_arcs_ptr_vec[i] = &(decode_states->at(i)->arcs);
+    beams_data[i] = decode_states->at(i)->beam;
+  }
+  dynamic_beams_ = beams.To(c_);
+
+  auto stack_states = Stack(0, num_seqs_, seq_states_ptr_vec.data());
+  auto stack_arcs = Stack(0, num_seqs_, seq_arcs_ptr_vec.data());
+
+  stack_states = Ragged<StateInfo>(RemoveEmptyLists(stack_states.shape, 1),
+                                   stack_states.values);
+  stack_arcs = Ragged<ArcInfo>(RemoveEmptyLists(stack_arcs.shape, 1),
+                               stack_arcs.values);
+
+  std::vector<Ragged<StateInfo>> frame_states_vec;
+  std::vector<Ragged<ArcInfo>> frame_arcs_vec;
+  Unstack(stack_states, 1, "left", &frame_states_vec);
+  Unstack(stack_arcs, 1, "left", &frame_arcs_vec);
+
+  T_ = frame_states_vec.size();
+  int32_t T = T_ + b_fsas_->shape.MaxSize(1) - 1;
+  frames_.reserve(T + 2);
+
+  frames_.resize(T_);
+  for (int32_t i = 0; i < T_; ++i) {
+    FrameInfo info;
+    info.states = frame_states_vec[i];
+    info.arcs = frame_arcs_vec[i];
+    frames_[i] = std::make_unique<FrameInfo>(info);
+  }
+
+  // do intersection
+  int32_t prune_num_frames = 20, prune_shift = 10;
+
+  for (int32_t t = 0; t <= b_fsas_->shape.MaxSize(1); t++) {
+    if (state_map_.NumKeyBits() == 32) {
+      frames_.push_back(PropagateForward<32>(t, frames_.back().get()));
+    } else if (state_map_.NumKeyBits() == 36) {
+      frames_.push_back(PropagateForward<36>(t, frames_.back().get()));
+    } else {
+      K2_CHECK_EQ(state_map_.NumKeyBits(), 40);
+      frames_.push_back(PropagateForward<40>(t, frames_.back().get()));
+    }
+    if (t != 0 && (T_ + t) % prune_shift == 0 ||
+        t == b_fsas_->shape.MaxSize(1)) {
+      int32_t prune_t_begin =
+          (T_ + t - prune_num_frames) > 0 ? (T_ + t - prune_num_frames) : 0;
+      int32_t prune_t_end = T_ + t;
+      PruneTimeRange(prune_t_begin, prune_t_end);
+    }
+  }
+  // The FrameInfo for time T+1 will have no states.  We did that
+  // last PropagateForward so that the 'arcs' member of frames_[T]
+  // is set up (it has no arcs but we need the shape).
+  frames_.pop_back();
+
+  int32_t his_t = T_ - 1;
+  T_ = T - 1;
+  partial_final_frame_ = std::move(frames_.back());
+  frames_.pop_back();
+
+  const int32_t *b_fsas_row_splits1 = b_fsas_->shape.RowSplits(1).Data();
+  int32_t *final_t_data = final_t_.Data();
+
+  K2_EVAL(
+      c_, num_seqs_, lambda_set_final_and_final_t, (int32_t i)->void {
+        int32_t b_chunk_size =
+            b_fsas_row_splits1[i + 1] - b_fsas_row_splits1[i];
+        int32_t final_t = his_t + b_chunk_size - 1;
+        final_t_data[i] = final_t;
+      });
+
+  // get lattice
+  FormatOutput(ofsa, arc_map_a);
+
+  int32_t frames_num = frames_.size();
+  std::vector<Ragged<StateInfo> *> frame_states_ptr_vec(frames_num);
+  std::vector<Ragged<ArcInfo> *> frame_arcs_ptr_vec(frames_num);
+  for (int32_t i = 0; i < frames_num; ++i) {
+    frame_states_ptr_vec[i] = &(frames_[i]->states);
+    frame_arcs_ptr_vec[i] = &(frames_[i]->arcs);
+  }
+  stack_states = Stack(0, frames_num, frame_states_ptr_vec.data());
+  stack_arcs = Stack(0, frames_num, frame_arcs_ptr_vec.data());
+
+  std::vector<Ragged<StateInfo>> seq_states_vec;
+  std::vector<Ragged<ArcInfo>> seq_arcs_vec;
+  Unstack(stack_states, 1, &seq_states_vec);
+  Unstack(stack_arcs, 1, &seq_arcs_vec);
+
+  beams = dynamic_beams_.To(GetCpuContext());
+  beams_data = beams.Data();
+  for (int32_t i = 0; i < num_seqs_; ++i) {
+    DecodeStateInfo info;
+    info.states = seq_states_vec[i];
+    info.arcs = seq_arcs_vec[i];
+    info.beam = beams_data[i];
+    decode_states->at(i) = std::make_unique<DecodeStateInfo>(info);
+  }
+}
+
 // Return FrameInfo for 1st frame, with `states` set but `arcs` not set.
 std::unique_ptr<FrameInfo> OnlineIntersectDensePruned::InitialFrameInfo() {
   NVTX_RANGE("InitialFrameInfo");
@@ -723,6 +857,7 @@ std::unique_ptr<FrameInfo> OnlineIntersectDensePruned::PropagateForward(
           state_map_acc.Delete(state_map_idx);
         });
   }
+
   return ans;
 }
 

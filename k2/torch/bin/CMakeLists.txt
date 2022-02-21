@@ -29,15 +29,6 @@ add_executable(hlg_decode ${hlg_decode_srcs})
 set_property(TARGET hlg_decode PROPERTY CXX_STANDARD 14)
 target_link_libraries(hlg_decode ${bin_dep_libs})
 
-set(online_decode_srcs online_decode.cu)
-if(NOT K2_WITH_CUDA)
-  transform(OUTPUT_VARIABLE online_decode_srcs SRCS ${online_decode_srcs})
-endif()
-
-add_executable(online_decode ${online_decode_srcs})
-set_property(TARGET online_decode PROPERTY CXX_STANDARD 14)
-target_link_libraries(online_decode ${bin_dep_libs})
-
 #-------------------------------------------
 #       HLG decoding + n-gram LM rescoring
 #-------------------------------------------
@@ -59,3 +50,26 @@ endif()
 add_executable(attention_rescore ${attention_rescore_srcs})
 set_property(TARGET attention_rescore PROPERTY CXX_STANDARD 14)
 target_link_libraries(attention_rescore ${bin_dep_libs})
+
+#---------------------------------------------------------------
+#       Online decoding
+#---------------------------------------------------------------
+set(online_decode_srcs online_decode.cu)
+if(NOT K2_WITH_CUDA)
+  transform(OUTPUT_VARIABLE online_decode_srcs SRCS ${online_decode_srcs})
+endif()
+add_executable(online_decode ${online_decode_srcs})
+set_property(TARGET online_decode PROPERTY CXX_STANDARD 14)
+target_link_libraries(online_decode ${bin_dep_libs})
+
+#---------------------------------------------------------------
+#       Async decoding
+#---------------------------------------------------------------
+set(async_decode_srcs async_decode.cu)
+if(NOT K2_WITH_CUDA)
+  transform(OUTPUT_VARIABLE async_decode_srcs SRCS ${async_decode_srcs})
+endif()
+add_executable(async_decode ${async_decode_srcs})
+set_property(TARGET async_decode PROPERTY CXX_STANDARD 14)
+target_link_libraries(async_decode ${bin_dep_libs})
+

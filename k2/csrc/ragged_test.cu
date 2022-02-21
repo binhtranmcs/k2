@@ -149,6 +149,32 @@ TEST(RaggedShapeOpsTest, Unstack2Axes) {
   }
 }
 
+TEST(RaggedShapeOpsTest, UnstackPosition) {
+  for (auto &c : {GetCpuContext(), GetCudaContext()}) {
+    auto shape = RaggedShape(c, "[ [ [ x x ] [ x x x ] [ x ] ]"
+                                "  [ [ x x ] ]"
+                                "  [ [ x ] [ x ] ] ]");
+
+    std::vector<RaggedShape> out;
+    std::vector<Array1<int32_t>> out_map;
+
+    for (auto pos : {"left", "right"}) {
+      Unstack(shape, 1, pos, &out, &out_map);
+      K2_LOG(INFO) << "out 0 : " << out[0];
+      K2_LOG(INFO) << "out 1 : " << out[1];
+      K2_LOG(INFO) << "out 2 : " << out[2];
+    }
+    //K2_CHECK(Equal(out[0], RaggedShape(c, "[ [ x x ] ]")));
+    //K2_CHECK(Equal(out_map[0], Array1<int32_t>(c, std::vector<int32_t>{0, 1})));
+    //K2_CHECK(Equal(out[1], RaggedShape(c, "[ [ x x x ] ]")));
+    //K2_CHECK(
+    //    Equal(out_map[1], Array1<int32_t>(c, std::vector<int32_t>{2, 3, 4})));
+    //K2_CHECK(Equal(out[2], RaggedShape(c, "[ [ x ] ]")));
+    //K2_CHECK(Equal(out_map[2], Array1<int32_t>(c, std::vector<int32_t>{5})));
+  }
+}
+
+
 TEST(RaggedShapeOpsTest, Unstack) {
   for (auto &c : {GetCpuContext(), GetCudaContext()}) {
     RaggedShape shape(c,
