@@ -24,8 +24,8 @@ function(download_kaldifeat)
 
   include(FetchContent)
 
-  set(kaldifeat_URL "https://github.com/csukuangfj/kaldifeat/archive/refs/tags/v1.9.tar.gz")
-  set(kaldifeat_HASH "SHA256=b7a61d65ce40e62e6b15702b59632c331df2697a8ee71917d68110c903f719be")
+  set(kaldifeat_URL "https://github.com/pkufool/kaldifeat/archive/refs/tags/v1.15.tar.gz")
+  set(kaldifeat_HASH "SHA256=2cc19ab1a2c8a6152ff0e7ab8f968c072d012d9330d4ec7ee397e10f4c66aa47")
 
   set(kaldifeat_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 
@@ -44,7 +44,7 @@ function(download_kaldifeat)
 
   set(KALDIFEAT_TORCH_VERSION_MAJOR ${K2_TORCH_VERSION_MAJOR})
   set(KALDIFEAT_TORCH_VERSION_MINOR ${K2_TORCH_VERSION_MINOR})
-  add_subdirectory(${kaldifeat_SOURCE_DIR} ${kaldifeat_BINARY_DIR} EXCLUDE_FROM_ALL)
+  add_subdirectory(${kaldifeat_SOURCE_DIR}/kaldifeat/csrc ${kaldifeat_BINARY_DIR} EXCLUDE_FROM_ALL)
 
   target_include_directories(kaldifeat_core PUBLIC ${kaldifeat_SOURCE_DIR})
 endfunction()

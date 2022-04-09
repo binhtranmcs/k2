@@ -22,8 +22,8 @@ android {
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         externalNativeBuild {
             cmake {
-                targets  "context", "connect_test"
-                cppFlags "-std=c++14", "-DANDROID"
+                targets  "ctc_decode", "hlg_decode"
+                cppFlags "-std=c++14", "-DANDROID", "-D_GLIBCXX_USE_CXX11_ABI=0"
             }
         }
 

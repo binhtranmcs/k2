@@ -23,6 +23,7 @@ if(POLICY CMP0074)
   cmake_policy(SET CMP0074 NEW)
 endif()
 
+
 project(k2 CXX)
 
 set(K2_VERSION "1.14")
@@ -180,18 +181,20 @@ set(build_DIR ${CMAKE_SOURCE_DIR}/../../../build)
 add_definitions(-DK2_USE_PYTORCH)
 file(GLOB PYTORCH_INCLUDE_DIRS "${build_DIR}/pytorch_android*.aar/headers")
 file(GLOB PYTORCH_LINK_DIRS "${build_DIR}/pytorch_android*.aar/jni/${ANDROID_ABI}")
+
 find_library(PYTORCH_LIBRARIES pytorch_jni
   PATHS ${PYTORCH_LINK_DIRS}
   NO_CMAKE_FIND_ROOT_PATH
 )
-find_library(TORCH_LIBRARIES pytorch_jni
-  PATHS ${PYTORCH_LINK_DIRS}
-  NO_CMAKE_FIND_ROOT_PATH
-)
+
 find_library(FBJNI_LIBRARY fbjni
   PATHS ${PYTORCH_LINK_DIRS}
   NO_CMAKE_FIND_ROOT_PATH
 )
+
+list(APPEND TORCH_LIBRARIES ${PYTORCH_LIBRARIES})
+list(APPEND TORCH_LIBRARIES ${FBJNI_LIBRARY})
+
 include_directories(
   ${PYTORCH_INCLUDE_DIRS}
   ${PYTORCH_INCLUDE_DIRS}/torch/csrc/api/include
@@ -199,9 +202,10 @@ include_directories(
 set(K2_TORCH_VERSION_MAJOR 1)
 set(K2_TORCH_VERSION_MINOR 10)
 
+link_libraries(log libc++_shared.so android)
 include(googletest)
 include(sentencepiece)
-#include(kaldifeat)
+include(kaldifeat)
 
 if(NOT K2_WITH_CUDA AND NOT WIN32)
   string(APPEND CMAKE_CXX_FLAGS " -Wno-unused-variable")
