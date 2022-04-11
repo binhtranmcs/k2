@@ -179,6 +179,8 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 set(build_DIR ${CMAKE_SOURCE_DIR}/../../../build)
 # Pytorch
 add_definitions(-DK2_USE_PYTORCH)
+add_definitions(-DTORCH_API_INCLUDE_EXTENSION_H)
+
 file(GLOB PYTORCH_INCLUDE_DIRS "${build_DIR}/pytorch_android*.aar/headers")
 file(GLOB PYTORCH_LINK_DIRS "${build_DIR}/pytorch_android*.aar/jni/${ANDROID_ABI}")
 

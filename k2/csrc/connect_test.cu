@@ -40,7 +40,9 @@ TEST(Connect, SingleFsa) {
       5 3 6 6
       6
     )";
+    std::cerr << "start fsa\n";
     auto fsa = FsaFromString(s).To(c);
+    std::cerr << "end fsa\n";
     int32_t gt = kFsaPropertiesMaybeAccessible |
                  kFsaPropertiesMaybeCoaccessible;
     int32_t p = GetFsaBasicProperties(fsa);

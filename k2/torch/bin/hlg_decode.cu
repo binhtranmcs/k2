@@ -112,7 +112,7 @@ int main(int argc, char *argv[]) {
     device = torch::Device(torch::kCUDA, 0);
   }
 
-  K2_LOG(INFO) << "Device: " << device;
+  // K2_LOG(INFO) << "Device: " << device;
 
   int32_t num_waves = argc - 1;
   K2_CHECK_GE(num_waves, 1) << "You have to provide at least one wave file";
@@ -121,14 +121,14 @@ int main(int argc, char *argv[]) {
     wave_filenames[i] = argv[i + 1];
   }
 
-  K2_LOG(INFO) << "Load wave files";
+  // K2_LOG(INFO) << "Load wave files";
   auto wave_data = k2::ReadWave(wave_filenames, FLAGS_sample_rate);
 
   for (auto &w : wave_data) {
     w = w.to(device);
   }
 
-  K2_LOG(INFO) << "Build Fbank computer";
+  // K2_LOG(INFO) << "Build Fbank computer";
   kaldifeat::FbankOptions fbank_opts;
   fbank_opts.frame_opts.samp_freq = FLAGS_sample_rate;
   fbank_opts.frame_opts.dither = 0;
@@ -139,7 +139,8 @@ int main(int argc, char *argv[]) {
 
   kaldifeat::Fbank fbank(fbank_opts);
 
-  K2_LOG(INFO) << "Compute features";
+  //K2_LOG(INFO) << "Compute features";
+  std::cerr << "Compute features\n";
   std::vector<int64_t> num_frames;
   auto features_vec = k2::ComputeFeatures(fbank, wave_data, &num_frames);
 
@@ -147,7 +148,7 @@ int main(int argc, char *argv[]) {
   auto features = torch::nn::utils::rnn::pad_sequence(features_vec, true,
                                                       -23.025850929940457f);
 
-  K2_LOG(INFO) << "Load neural network model";
+  // K2_LOG(INFO) << "Load neural network model";
   torch::jit::script::Module module = torch::jit::load(FLAGS_nn_model);
   module.eval();
   module.to(device);
@@ -162,7 +163,8 @@ int main(int argc, char *argv[]) {
 
   torch::IValue supervisions(sup);
 
-  K2_LOG(INFO) << "Compute nnet_output";
+  // K2_LOG(INFO) << "Compute nnet_output";
+  std::cerr << "Compute nnet_output\n";
   // the output for module.forward() is a tuple of 3 tensors
   // See the definition of the model in conformer_ctc/transformer.py
   // from icefall.
@@ -177,12 +179,14 @@ int main(int argc, char *argv[]) {
   torch::Tensor supervision_segments =
       k2::GetSupervisionSegments(supervisions, subsampling_factor);
 
-  K2_LOG(INFO) << "Load " << FLAGS_hlg;
+  // K2_LOG(INFO) << "Load " << FLAGS_hlg;
+  std::cerr << "Load " << FLAGS_hlg << std::endl;
   k2::FsaClass decoding_graph = k2::LoadFsa(FLAGS_hlg, device);
   K2_CHECK(decoding_graph.HasTensorAttr("aux_labels") ||
            decoding_graph.HasRaggedTensorAttr("aux_labels"));
 
-  K2_LOG(INFO) << "Decoding";
+  // K2_LOG(INFO) << "Decoding";
+  std::cerr << "Decoding\n";
   k2::FsaClass lattice = k2::GetLattice(
       nnet_output, decoding_graph, supervision_segments, FLAGS_search_beam,
       FLAGS_output_beam, FLAGS_min_activate_states, FLAGS_max_activate_states,
@@ -213,7 +217,8 @@ int main(int argc, char *argv[]) {
     os << texts[i];
     os << "\n\n";
   }
-  K2_LOG(INFO) << os.str();
+  // K2_LOG(INFO) << os.str();
+  std::cerr << os.str();
 
   return 0;
 }
