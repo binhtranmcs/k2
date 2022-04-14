@@ -77,11 +77,11 @@ set(context_srcs
 )
 
 
-if(K2_USE_PYTORCH)
-  list(APPEND context_srcs pytorch_context.cu)
-else()
+#if(K2_USE_PYTORCH)
+#  list(APPEND context_srcs pytorch_context.cu)
+#else()
   list(APPEND context_srcs default_context.cu)
-endif()
+#endif()
 
 if(NOT K2_WITH_CUDA)
   transform(OUTPUT_VARIABLE context_srcs SRCS ${context_srcs})

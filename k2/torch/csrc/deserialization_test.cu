@@ -25,7 +25,7 @@
 #endif
 
 namespace k2 {
-
+#ifndef __ANDROID__
 // defined in k2/torch/csrc/deserialization.cu
 Ragged<int32_t> ToRaggedInt(torch::IValue value);
 
@@ -220,5 +220,5 @@ TEST(Deserialization, Test) {
   int ret = rmdir(dir_name);
   assert(ret == 0);
 }
-
+#endif
 }  // namespace k2

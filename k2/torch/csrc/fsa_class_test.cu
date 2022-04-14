@@ -28,7 +28,7 @@
 #include "k2/torch/csrc/utils.h"
 
 namespace k2 {
-
+#ifndef __ANDROID__
 TEST(FsaClassTest, FromUnaryFunctionTensor) {
   for (const ContextPtr &c : {GetCpuContext(), GetCudaContext()}) {
     std::string s = R"(0 1 2 10
@@ -126,5 +126,5 @@ TEST(FsaClassTest, Attributes) {
     EXPECT_FALSE(src.HasRaggedTensorAttr("ragged_int"));
   }
 }
-
+#endif
 }  // namespace k2

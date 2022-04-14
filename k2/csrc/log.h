@@ -135,7 +135,7 @@ class Logger {
         level_(level) {
     cur_level_ = GetCurrentLogLevel();
 #if !defined(__CUDA_ARCH__)
-    filename_ = RemovePrefix(filename);
+//    filename_ = RemovePrefix(filename);
     if (cur_level_ <= level_) {
       printf("%s ", GetTimeStamp().c_str());
     }
