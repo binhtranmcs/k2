@@ -275,11 +275,16 @@ int main(int argc, char *argv[]) {
           {i, torch::indexing::Slice(start, end), torch::indexing::Slice()});
 
       // padding T axis to chunk_size if needed
+#ifdef __ANDROID__
+      auto pad_values = torch::zeros({chunk_size - end + start, sub_output.size(1)},
+                                     torch::device(sub_output.device()).dtype(sub_output.dtype()));
+      sub_output = torch::cat({sub_output, pad_values}, 0);
+#else
       namespace F = torch::nn::functional;
       sub_output = F::pad(sub_output,
                           F::PadFuncOptions({0, 0, 0, chunk_size - end + start})
-                              .mode(torch::kConstant));
-
+                              .mode(torch::kConstant))
+#endif
       current_encoder_outs.push_back(sub_output);
 
       // we can decode at most `FLAGS_max_num_streams` waves at a time

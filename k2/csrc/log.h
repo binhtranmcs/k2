@@ -116,12 +116,6 @@ class Logger {
         line_num_(line_num),
         level_(level) {
     cur_level_ = GetCurrentLogLevel();
-#if !defined(__CUDA_ARCH__)
-//    filename_ = RemovePrefix(filename);
-    if (cur_level_ <= level_) {
-      printf("%s ", GetTimeStamp().c_str());
-    }
-#endif
     switch (level) {
       case TRACE:
         if (cur_level_ <= TRACE) printf("[T] ");

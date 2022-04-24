@@ -110,13 +110,8 @@ public class VoiceRectView extends View {
   @Override
   protected void onDraw(Canvas canvas) {
     super.onDraw(canvas);
-    double mRandom;
     float currentHeight;
     for (int i = 0; i < mRectCount; i++) {
-      // 由于只是简单的案例就不监听音频输入，随机模拟一些数字即可
-      mRandom = Math.random();
-
-      //if (i < 1 || i > mRectCount - 2) mRandom = 0;
       currentHeight = (float) (mRectHeight * mEnergyBuffer[i]);
 
       // 矩形的绘制是从左边开始到上、右、下边（左右边距离左边画布边界的距离，上下边距离上边画布边界的距离）

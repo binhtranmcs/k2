@@ -1,5 +1,7 @@
 package com.xiaomi.k2;
 
+import static java.lang.Math.abs;
+
 import android.Manifest;
 import android.content.Context;
 import android.content.pm.PackageManager;
@@ -79,25 +81,25 @@ public class MainActivity extends AppCompatActivity {
 
     requestAudioPermissions();
 
-    final String modelPath = new File(assetFilePath(this, "final.zip")).getAbsolutePath();
-    final String dictPath = new File(assetFilePath(this, "words.txt")).getAbsolutePath();
+    //final String modelPath = new File(assetFilePath(this, "jit.pt")).getAbsolutePath();
+    //final String bpePath = new File(assetFilePath(this, "bpe.model")).getAbsolutePath();
     TextView textView = findViewById(R.id.textView);
     textView.setText("");
-    Recognize.init(modelPath, dictPath);
+    //Recognize.init(modelPath, bpePath);
 
     Button button = findViewById(R.id.button);
     button.setText("Start Record");
     button.setOnClickListener(view -> {
       if (!startRecord) {
         startRecord = true;
-        Recognize.reset();
+        //Recognize.reset();
         startRecordThread();
         startAsrThread();
-        Recognize.startDecode();
+        //Recognize.startDecode();
         button.setText("Stop Record");
       } else {
         startRecord = false;
-        Recognize.setInputFinished();
+        //Recognize.setInputFinished();
         button.setText("Start Record");
       }
       button.setEnabled(false);
@@ -144,7 +146,7 @@ public class MainActivity extends AppCompatActivity {
       while (startRecord) {
         short[] buffer = new short[miniBufferSize / 2];
         int read = record.read(buffer, 0, buffer.length);
-        voiceView.add(calculateDb(buffer));
+        voiceView.add(calculateScale(buffer));
         try {
           if (AudioRecord.ERROR_INVALID_OPERATION != read) {
             bufferQueue.put(buffer);
@@ -162,36 +164,68 @@ public class MainActivity extends AppCompatActivity {
     }).start();
   }
 
-  private double calculateDb(short[] buffer) {
-    double energy = 0.0;
+  private double calculateScale(short[] buffer) {
+    int amplitude = 0;
     for (short value : buffer) {
-      energy += value * value;
+      amplitude += abs(value);
     }
-    energy /= buffer.length;
-    energy = (10 * Math.log10(1 + energy)) / 100;
-    energy = Math.min(energy, 1.0);
-    return energy;
+    double scale = amplitude * 1.0 / buffer.length / 32768 * 5;
+    scale = Math.min(scale, 1.0);
+    Log.i(LOG_TAG, "scale : " + Double.toString(scale));
+    return scale;
   }
 
   private void startAsrThread() {
     new Thread(() -> {
       // Send all data
+      while (startRecord) {
+        try {
+          Thread.sleep(100);
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+      }
+      float [] data = new float[miniBufferSize / 2 * bufferQueue.size()];
+      int index = 0;
+      while (bufferQueue.size() > 0) {
+        short[] chunk = new short[0];
+        try {
+          chunk = bufferQueue.take();
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+        for (short value : chunk) {
+          data[index++] = value * 1.0f / 32768;
+        }
+      }
+
+      String result = Recognize.Decode(data);
+      runOnUiThread(() -> {
+        TextView textView = findViewById(R.id.textView);
+        textView.setText(result);
+        Button button = findViewById(R.id.button);
+        button.setEnabled(true);
+      });
+
+      /*
       while (startRecord || bufferQueue.size() > 0) {
         try {
-          short[] data = bufferQueue.take();
+          // short[] data = bufferQueue.take();
           // 1. add data to C++ interface
-          Recognize.acceptWaveform(data);
+          //Recognize.acceptWaveform(data);
           // 2. get partial result
-          runOnUiThread(() -> {
-            TextView textView = findViewById(R.id.textView);
-            textView.setText(Recognize.getResult());
-          });
+          //runOnUiThread(() -> {
+          //  TextView textView = findViewById(R.id.textView);
+          //  textView.setText(Recognize.getResult());
+          //});
         } catch (InterruptedException e) {
           Log.e(LOG_TAG, e.getMessage());
         }
       }
+       */
 
       // Wait for final result
+      /*
       while (true) {
         // get result
         if (!Recognize.getFinished()) {
@@ -207,6 +241,7 @@ public class MainActivity extends AppCompatActivity {
           break;
         }
       }
+       */
     }).start();
   }
 }
