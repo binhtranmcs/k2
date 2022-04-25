@@ -147,7 +147,7 @@ int main(int argc, char *argv[]) {
   auto features = torch::nn::utils::rnn::pad_sequence(features_vec, true,
                                                       -23.025850929940457f);
 
-  // K2_LOG(INFO) << "Load neural network model";
+  K2_LOG(INFO) << "Load neural network model";
   torch::jit::script::Module module = torch::jit::load(FLAGS_nn_model);
   module.eval();
   module.to(device);
