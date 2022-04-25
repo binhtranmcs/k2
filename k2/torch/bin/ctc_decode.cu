@@ -106,8 +106,7 @@ int main(int argc, char *argv[]) {
     device = torch::Device(torch::kCUDA, 0);
   }
 
-  // K2_LOG(INFO) << "Device: " << device;
-  std::cerr << "Device: " << device << std::endl;
+  K2_LOG(INFO) << "Device: " << device;
 
   int32_t num_waves = argc - 1;
   K2_CHECK_GE(num_waves, 1) << "You have to provide at least one wave file";
@@ -116,19 +115,14 @@ int main(int argc, char *argv[]) {
     wave_filenames[i] = argv[i + 1];
   }
 
-  // K2_LOG(INFO) << "Load wave files";
-  std::cerr << "Load wave files\n";
+  K2_LOG(INFO) << "Load wave files";
   auto wave_data = k2::ReadWave(wave_filenames, FLAGS_sample_rate);
 
   for (auto &w : wave_data) {
     w = w.to(device);
   }
 
-  std::cerr << "build ctc topo\n";
-  auto decoding_graph = k2::CtcTopo(499, true, device);
-
-  // K2_LOG(INFO) << "Build Fbank computer";
-  std::cerr << "Build Fbank computer\n";
+  K2_LOG(INFO) << "Build Fbank computer";
   kaldifeat::FbankOptions fbank_opts;
   fbank_opts.frame_opts.samp_freq = FLAGS_sample_rate;
   fbank_opts.frame_opts.dither = 0;
@@ -139,8 +133,7 @@ int main(int argc, char *argv[]) {
 
   kaldifeat::Fbank fbank(fbank_opts);
 
-  // K2_LOG(INFO) << "Compute features";
-  std::cerr << "Compute features\n";
+  K2_LOG(INFO) << "Compute features";
   std::vector<int64_t> num_frames;
   auto features_vec = k2::ComputeFeatures(fbank, wave_data, &num_frames);
 
@@ -148,8 +141,7 @@ int main(int argc, char *argv[]) {
   auto features = torch::nn::utils::rnn::pad_sequence(features_vec, true,
                                                       -23.025850929940457f);
 
-  // K2_LOG(INFO) << "Load neural network model";
-  std::cerr << "Load neural network model\n";
+  K2_LOG(INFO) << "Load neural network model";
   torch::jit::script::Module module = torch::jit::load(FLAGS_nn_model);
   module.eval();
   module.to(device);
@@ -164,8 +156,7 @@ int main(int argc, char *argv[]) {
 
   torch::IValue supervisions(sup);
 
-  // K2_LOG(INFO) << "Compute nnet_output";
-  std::cerr << "Compute nnet_output\n";
+  K2_LOG(INFO) << "Compute nnet_output";
   // the output for module.forward() is a tuple of 3 tensors
   // See the definition of the model in conformer_ctc/transformer.py
   // from icefall.
@@ -180,12 +171,10 @@ int main(int argc, char *argv[]) {
   torch::Tensor supervision_segments =
       k2::GetSupervisionSegments(supervisions, subsampling_factor);
 
-  // K2_LOG(INFO) << "Build CTC topo";
-  std::cerr << "build ctc topo\n";
-//  auto decoding_graph = k2::CtcTopo(nnet_output.size(2) - 1, true, device);
+  K2_LOG(INFO) << "Build CTC topo";
+  auto decoding_graph = k2::CtcTopo(nnet_output.size(2) - 1, true, device);
 
-  // K2_LOG(INFO) << "Decoding";
-  std::cerr << "Decoding\n";
+  K2_LOG(INFO) << "Decoding";
   k2::FsaClass lattice = k2::GetLattice(
       nnet_output, decoding_graph, supervision_segments, FLAGS_search_beam,
       FLAGS_output_beam, FLAGS_min_activate_states, FLAGS_max_activate_states,
@@ -215,8 +204,7 @@ int main(int argc, char *argv[]) {
     os << texts[i];
     os << "\n\n";
   }
-  // K2_LOG(INFO) << os.str();
-  std::cerr << os.str();
+  K2_LOG(INFO) << os.str();
 
   return 0;
 }

@@ -10,7 +10,6 @@ import androidx.core.content.ContextCompat;
 import java.util.Arrays;
 
 public class WaveView extends View {
-
   private Paint mPaint;
   private int mBarNum;
   private int mBarWidth;
@@ -37,8 +36,8 @@ public class WaveView extends View {
   public void Init(Context context, AttributeSet attrs) {
     TypedArray ta = context.obtainStyledAttributes(attrs, R.styleable.WaveView);
     mPaint = new Paint();
-    mPaint.setColor(ta.getColor(R.styleable.WaveView_BarColor,
-        ContextCompat.getColor(context, R.color.bar_color)));
+    mPaint.setColor(ta.getColor(
+        R.styleable.WaveView_BarColor, ContextCompat.getColor(context, R.color.bar_color)));
     mBarNum = ta.getInt(R.styleable.WaveView_BarNum, 10);
     mValue = new double[mBarNum];
     mDelayTime = ta.getInt(R.styleable.WaveView_DelayTime, 300);
@@ -72,13 +71,8 @@ public class WaveView extends View {
     int currentIndex = mCurrentBarIndex;
     for (int i = 0; i < mBarNum; i++) {
       float currentHeight = (float) (mHeight * mValue[(currentIndex + i) % mBarNum]);
-      canvas.drawRect(
-          (float) ((mBarWidth + mBarOffset) * i),
-          (mHeight + currentHeight) / 2,
-          (float) (mBarWidth * (i + 1) + mBarOffset * i),
-              (mHeight - currentHeight) / 2,
-          mPaint
-      );
+      canvas.drawRect((float) ((mBarWidth + mBarOffset) * i), (mHeight + currentHeight) / 2,
+          (float) (mBarWidth * (i + 1) + mBarOffset * i), (mHeight - currentHeight) / 2, mPaint);
     }
     postInvalidateDelayed(mDelayTime);
   }

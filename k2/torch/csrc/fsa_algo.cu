@@ -26,13 +26,9 @@ namespace k2 {
 
 FsaClass CtcTopo(int32_t max_token, bool modified /*= false*/,
                  torch::Device device /*=torch::kCPU*/) {
-  std::cerr << "start to build\n";
   Array1<int32_t> aux_labels;
-  std::cerr << "prepare device\n";
   auto ctx = ContextFromDevice(device);
-  std::cerr << "build raw ctc topo\n";
   Fsa fsa = CtcTopo(ctx, max_token, modified, &aux_labels);
-  std::cerr << "build raw ctc topo done\n";
   FsaClass dest(fsa);
   dest.SetTensorAttr("aux_labels", Array1ToTorch(aux_labels));
   return dest;

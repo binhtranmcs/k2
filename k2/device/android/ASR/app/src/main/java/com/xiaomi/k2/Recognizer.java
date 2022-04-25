@@ -1,7 +1,6 @@
 package com.xiaomi.k2;
 
 public class Recognizer {
-
   static {
     System.loadLibrary("k2");
   }

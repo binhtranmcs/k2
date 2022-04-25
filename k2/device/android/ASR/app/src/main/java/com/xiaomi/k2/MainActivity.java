@@ -26,15 +26,14 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 
 public class MainActivity extends AppCompatActivity {
-
   private final int MY_PERMISSIONS_RECORD_AUDIO = 1;
   private static final String LOG_TAG = "k2";
-  private static final int SAMPLE_RATE = 16000;  // The sampling rate
-  private static final int MAX_QUEUE_SIZE = 2500;  // 100 seconds audio, 1 / 0.04 * 100
+  private static final int SAMPLE_RATE = 16000; // The sampling rate
+  private static final int MAX_QUEUE_SIZE = 2500; // 100 seconds audio, 1 / 0.04 * 100
 
   private boolean startRecord = false;
   private AudioRecord record = null;
-  private int miniBufferSize = 0;  // 1280 bytes 648 byte 40ms, 0.04s
+  private int miniBufferSize = 0; // 1280 bytes 648 byte 40ms, 0.04s
   private final BlockingQueue<short[]> bufferQueue = new ArrayBlockingQueue<>(MAX_QUEUE_SIZE);
 
   public static String assetFilePath(Context context, String assetName) {
@@ -60,8 +59,8 @@ public class MainActivity extends AppCompatActivity {
   }
 
   @Override
-  public void onRequestPermissionsResult(int requestCode,
-      String[] permissions, int[] grantResults) {
+  public void onRequestPermissionsResult(
+      int requestCode, String[] permissions, int[] grantResults) {
     if (requestCode == MY_PERMISSIONS_RECORD_AUDIO) {
       if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
         Log.i(LOG_TAG, "record permission is granted");
@@ -87,39 +86,42 @@ public class MainActivity extends AppCompatActivity {
     button.setText("Start Record");
     button.setEnabled(false);
 
-    button.setOnClickListener(view -> {
-      if (!startRecord) {
-        startRecord = true;
-        startRecordThread();
-        startAsrThread();
-        button.setText("Stop Record");
-      } else {
-        startRecord = false;
-        button.setText("Start Record");
-      }
-      button.setEnabled(false);
-    });
+    button.setOnClickListener(
+        view -> {
+          if (!startRecord) {
+            startRecord = true;
+            startRecordThread();
+            startAsrThread();
+            button.setText("Stop Record");
+          } else {
+            startRecord = false;
+            button.setText("Start Record");
+          }
+          button.setEnabled(false);
+        });
   }
 
   private void InitDecoder() {
-    new Thread(() -> {
-      final String modelPath = new File(assetFilePath(this, "jit.pt")).getAbsolutePath();
-      final String bpePath = new File(assetFilePath(this, "bpe.model")).getAbsolutePath();
-      Recognizer.init(modelPath, bpePath);
+    new Thread(
+            () -> {
+              final String modelPath = new File(assetFilePath(this, "jit.pt")).getAbsolutePath();
+              final String bpePath = new File(assetFilePath(this, "bpe.model")).getAbsolutePath();
+              Recognizer.init(modelPath, bpePath);
 
-      runOnUiThread(() -> {
-        Button button = findViewById(R.id.button);
-        button.setEnabled(true);
-      });
-    }).start();
+              runOnUiThread(
+                  () -> {
+                    Button button = findViewById(R.id.button);
+                    button.setEnabled(true);
+                  });
+            })
+        .start();
   }
 
   private void requestAudioPermissions() {
     if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
         != PackageManager.PERMISSION_GRANTED) {
-      ActivityCompat.requestPermissions(this,
-          new String[]{Manifest.permission.RECORD_AUDIO},
-          MY_PERMISSIONS_RECORD_AUDIO);
+      ActivityCompat.requestPermissions(
+          this, new String[] {Manifest.permission.RECORD_AUDIO}, MY_PERMISSIONS_RECORD_AUDIO);
     } else {
       initRecoder();
     }
@@ -127,18 +129,20 @@ public class MainActivity extends AppCompatActivity {
 
   private void initRecoder() {
     // buffer size in bytes 1280
-    miniBufferSize = AudioRecord.getMinBufferSize(SAMPLE_RATE,
-        AudioFormat.CHANNEL_IN_MONO,
-        AudioFormat.ENCODING_PCM_16BIT);
+    miniBufferSize =
+        AudioRecord.getMinBufferSize(
+            SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT);
     if (miniBufferSize == AudioRecord.ERROR || miniBufferSize == AudioRecord.ERROR_BAD_VALUE) {
       Log.e(LOG_TAG, "Audio buffer can't initialize!");
       return;
     }
-    record = new AudioRecord(MediaRecorder.AudioSource.DEFAULT,
-        SAMPLE_RATE,
-        AudioFormat.CHANNEL_IN_MONO,
-        AudioFormat.ENCODING_PCM_16BIT,
-        miniBufferSize);
+    record =
+        new AudioRecord(
+            MediaRecorder.AudioSource.DEFAULT,
+            SAMPLE_RATE,
+            AudioFormat.CHANNEL_IN_MONO,
+            AudioFormat.ENCODING_PCM_16BIT,
+            miniBufferSize);
     if (record.getState() != AudioRecord.STATE_INITIALIZED) {
       Log.e(LOG_TAG, "Audio Record can't initialize!");
       return;
@@ -147,29 +151,31 @@ public class MainActivity extends AppCompatActivity {
   }
 
   private void startRecordThread() {
-    new Thread(() -> {
-      WaveView waveView = findViewById(R.id.waveView);
-      record.startRecording();
-      Process.setThreadPriority(Process.THREAD_PRIORITY_AUDIO);
-      while (startRecord) {
-        short[] buffer = new short[miniBufferSize / 2];
-        int read = record.read(buffer, 0, buffer.length);
-        waveView.addData(calculateScale(buffer));
-        try {
-          if (AudioRecord.ERROR_INVALID_OPERATION != read) {
-            bufferQueue.put(buffer);
-          }
-        } catch (InterruptedException e) {
-          Log.e(LOG_TAG, e.getMessage());
-        }
-        Button button = findViewById(R.id.button);
-        if (!button.isEnabled() && startRecord) {
-          runOnUiThread(() -> button.setEnabled(true));
-        }
-      }
-      record.stop();
-      waveView.resetView();
-    }).start();
+    new Thread(
+            () -> {
+              WaveView waveView = findViewById(R.id.waveView);
+              record.startRecording();
+              Process.setThreadPriority(Process.THREAD_PRIORITY_AUDIO);
+              while (startRecord) {
+                short[] buffer = new short[miniBufferSize / 2];
+                int read = record.read(buffer, 0, buffer.length);
+                waveView.addData(calculateScale(buffer));
+                try {
+                  if (AudioRecord.ERROR_INVALID_OPERATION != read) {
+                    bufferQueue.put(buffer);
+                  }
+                } catch (InterruptedException e) {
+                  Log.e(LOG_TAG, e.getMessage());
+                }
+                Button button = findViewById(R.id.button);
+                if (!button.isEnabled() && startRecord) {
+                  runOnUiThread(() -> button.setEnabled(true));
+                }
+              }
+              record.stop();
+              waveView.resetView();
+            })
+        .start();
   }
 
   private double calculateScale(short[] buffer) {
@@ -183,72 +189,75 @@ public class MainActivity extends AppCompatActivity {
   }
 
   private void startAsrThread() {
-    new Thread(() -> {
-      // Send all data
-      while (startRecord) {
-        try {
-          Thread.sleep(100);
-        } catch (InterruptedException e) {
-          e.printStackTrace();
-        }
-      }
-      float [] data = new float[miniBufferSize * bufferQueue.size()];
-      int index = 0;
-      while (bufferQueue.size() > 0) {
-        short[] chunk = new short[0];
-        try {
-          chunk = bufferQueue.take();
-        } catch (InterruptedException e) {
-          e.printStackTrace();
-        }
-        for (short value : chunk) {
-          data[index++] = value * 1.0f / 32768;
-        }
-      }
+    new Thread(
+            () -> {
+              // Send all data
+              while (startRecord) {
+                try {
+                  Thread.sleep(100);
+                } catch (InterruptedException e) {
+                  e.printStackTrace();
+                }
+              }
+              float[] data = new float[miniBufferSize * bufferQueue.size()];
+              int index = 0;
+              while (bufferQueue.size() > 0) {
+                short[] chunk = new short[0];
+                try {
+                  chunk = bufferQueue.take();
+                } catch (InterruptedException e) {
+                  e.printStackTrace();
+                }
+                for (short value : chunk) {
+                  data[index++] = value * 1.0f / 32768;
+                }
+              }
 
-      String result = Recognizer.decode(data);
-      runOnUiThread(() -> {
-        TextView textView = findViewById(R.id.textView);
-        textView.setText(result);
-        Button button = findViewById(R.id.button);
-        button.setEnabled(true);
-      });
+              String result = Recognizer.decode(data);
+              runOnUiThread(
+                  () -> {
+                    TextView textView = findViewById(R.id.textView);
+                    textView.setText(result);
+                    Button button = findViewById(R.id.button);
+                    button.setEnabled(true);
+                  });
 
-      /*
-      while (startRecord || bufferQueue.size() > 0) {
-        try {
-          // short[] data = bufferQueue.take();
-          // 1. add data to C++ interface
-          //Recognize.acceptWaveform(data);
-          // 2. get partial result
-          //runOnUiThread(() -> {
-          //  TextView textView = findViewById(R.id.textView);
-          //  textView.setText(Recognize.getResult());
-          //});
-        } catch (InterruptedException e) {
-          Log.e(LOG_TAG, e.getMessage());
-        }
-      }
-       */
+              /*
+              while (startRecord || bufferQueue.size() > 0) {
+                try {
+                  // short[] data = bufferQueue.take();
+                  // 1. add data to C++ interface
+                  //Recognize.acceptWaveform(data);
+                  // 2. get partial result
+                  //runOnUiThread(() -> {
+                  //  TextView textView = findViewById(R.id.textView);
+                  //  textView.setText(Recognize.getResult());
+                  //});
+                } catch (InterruptedException e) {
+                  Log.e(LOG_TAG, e.getMessage());
+                }
+              }
+               */
 
-      // Wait for final result
-      /*
-      while (true) {
-        // get result
-        if (!Recognize.getFinished()) {
-          runOnUiThread(() -> {
-            TextView textView = findViewById(R.id.textView);
-            textView.setText(Recognize.getResult());
-          });
-        } else {
-          runOnUiThread(() -> {
-            Button button = findViewById(R.id.button);
-            button.setEnabled(true);
-          });
-          break;
-        }
-      }
-       */
-    }).start();
+              // Wait for final result
+              /*
+              while (true) {
+                // get result
+                if (!Recognize.getFinished()) {
+                  runOnUiThread(() -> {
+                    TextView textView = findViewById(R.id.textView);
+                    textView.setText(Recognize.getResult());
+                  });
+                } else {
+                  runOnUiThread(() -> {
+                    Button button = findViewById(R.id.button);
+                    button.setEnabled(true);
+                  });
+                  break;
+                }
+              }
+               */
+            })
+        .start();
   }
 }
