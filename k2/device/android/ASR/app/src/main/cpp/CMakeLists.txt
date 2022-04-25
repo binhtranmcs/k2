@@ -221,3 +221,16 @@ message(STATUS "CMAKE_CXX_FLAGS: ${CMAKE_CXX_FLAGS}")
 
 add_subdirectory(k2)
 
+
+set(bin_dep_libs
+  ${TORCH_LIBRARIES}
+  k2_torch
+  sentencepiece-static # see cmake/sentencepiece.cmake
+  )
+
+add_library(k2 SHARED jni/k2.cc)
+
+set_property(TARGET k2 PROPERTY CXX_STANDARD 14)
+target_link_libraries(k2 ${bin_dep_libs})
+
+

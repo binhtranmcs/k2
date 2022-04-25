@@ -81,29 +81,37 @@ public class MainActivity extends AppCompatActivity {
 
     requestAudioPermissions();
 
-    //final String modelPath = new File(assetFilePath(this, "jit.pt")).getAbsolutePath();
-    //final String bpePath = new File(assetFilePath(this, "bpe.model")).getAbsolutePath();
-    TextView textView = findViewById(R.id.textView);
-    textView.setText("");
-    //Recognize.init(modelPath, bpePath);
+    InitDecoder();
 
     Button button = findViewById(R.id.button);
     button.setText("Start Record");
+    button.setEnabled(false);
+
     button.setOnClickListener(view -> {
       if (!startRecord) {
         startRecord = true;
-        //Recognize.reset();
         startRecordThread();
         startAsrThread();
-        //Recognize.startDecode();
         button.setText("Stop Record");
       } else {
         startRecord = false;
-        //Recognize.setInputFinished();
         button.setText("Start Record");
       }
       button.setEnabled(false);
     });
+  }
+
+  private void InitDecoder() {
+    new Thread(() -> {
+      final String modelPath = new File(assetFilePath(this, "jit.pt")).getAbsolutePath();
+      final String bpePath = new File(assetFilePath(this, "bpe.model")).getAbsolutePath();
+      Recognizer.init(modelPath, bpePath);
+
+      runOnUiThread(() -> {
+        Button button = findViewById(R.id.button);
+        button.setEnabled(true);
+      });
+    }).start();
   }
 
   private void requestAudioPermissions() {
@@ -140,13 +148,13 @@ public class MainActivity extends AppCompatActivity {
 
   private void startRecordThread() {
     new Thread(() -> {
-      VoiceRectView voiceView = findViewById(R.id.voiceRectView);
+      WaveView waveView = findViewById(R.id.waveView);
       record.startRecording();
       Process.setThreadPriority(Process.THREAD_PRIORITY_AUDIO);
       while (startRecord) {
         short[] buffer = new short[miniBufferSize / 2];
         int read = record.read(buffer, 0, buffer.length);
-        voiceView.add(calculateScale(buffer));
+        waveView.addData(calculateScale(buffer));
         try {
           if (AudioRecord.ERROR_INVALID_OPERATION != read) {
             bufferQueue.put(buffer);
@@ -160,7 +168,7 @@ public class MainActivity extends AppCompatActivity {
         }
       }
       record.stop();
-      voiceView.zero();
+      waveView.resetView();
     }).start();
   }
 
@@ -171,7 +179,6 @@ public class MainActivity extends AppCompatActivity {
     }
     double scale = amplitude * 1.0 / buffer.length / 32768 * 5;
     scale = Math.min(scale, 1.0);
-    Log.i(LOG_TAG, "scale : " + Double.toString(scale));
     return scale;
   }
 
@@ -185,7 +192,7 @@ public class MainActivity extends AppCompatActivity {
           e.printStackTrace();
         }
       }
-      float [] data = new float[miniBufferSize / 2 * bufferQueue.size()];
+      float [] data = new float[miniBufferSize * bufferQueue.size()];
       int index = 0;
       while (bufferQueue.size() > 0) {
         short[] chunk = new short[0];
@@ -199,7 +206,7 @@ public class MainActivity extends AppCompatActivity {
         }
       }
 
-      String result = Recognize.Decode(data);
+      String result = Recognizer.decode(data);
       runOnUiThread(() -> {
         TextView textView = findViewById(R.id.textView);
         textView.setText(result);

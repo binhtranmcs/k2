@@ -9,6 +9,13 @@ android {
     packagingOptions {
         pickFirst 'lib/arm64-v8a/libc++_shared.so'
     }
+
+  //  sourceSets {
+  //      main {
+  //          jniLibs.srcDirs = ['libs']
+  //      }
+  //  }
+
     configurations {
         extractForNativeBuild
     }
@@ -26,6 +33,7 @@ android {
         externalNativeBuild {
             cmake {
 //                targets  "cu_connect_test", "cu_fsa_algo_test", "ctc_decode", "hlg_decode"
+                targets "k2"
                 cppFlags ""
                 arguments "-DK2_USE_PYTORCH", "-DK2_WITH_CUDA=OFF"
             }
