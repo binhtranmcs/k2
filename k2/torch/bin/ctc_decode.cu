@@ -172,7 +172,7 @@ int main(int argc, char *argv[]) {
       k2::GetSupervisionSegments(supervisions, subsampling_factor);
 
   K2_LOG(INFO) << "Build CTC topo";
-  auto decoding_graph = k2::CtcTopo(nnet_output.size(2) - 1, true, device);
+  auto decoding_graph = k2::CtcTopo(nnet_output.size(2) - 1, false, device);
 
   K2_LOG(INFO) << "Decoding";
   k2::FsaClass lattice = k2::GetLattice(
