@@ -112,7 +112,7 @@ int main(int argc, char *argv[]) {
     device = torch::Device(torch::kCUDA, 0);
   }
 
-  // K2_LOG(INFO) << "Device: " << device;
+  K2_LOG(INFO) << "Device: " << device;
 
   int32_t num_waves = argc - 1;
   K2_CHECK_GE(num_waves, 1) << "You have to provide at least one wave file";
@@ -121,14 +121,14 @@ int main(int argc, char *argv[]) {
     wave_filenames[i] = argv[i + 1];
   }
 
-  // K2_LOG(INFO) << "Load wave files";
+  K2_LOG(INFO) << "Load wave files";
   auto wave_data = k2::ReadWave(wave_filenames, FLAGS_sample_rate);
 
   for (auto &w : wave_data) {
     w = w.to(device);
   }
 
-  // K2_LOG(INFO) << "Build Fbank computer";
+  K2_LOG(INFO) << "Build Fbank computer";
   kaldifeat::FbankOptions fbank_opts;
   fbank_opts.frame_opts.samp_freq = FLAGS_sample_rate;
   fbank_opts.frame_opts.dither = 0;
