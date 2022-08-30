@@ -1,0 +1,249 @@
+<!-- see https://stackoverflow.com/questions/2454577/sphinx-restructuredtext-show-hide-code-snippets -->
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FAQs &mdash; k2 1.19 documentation</title>
+      <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Core concepts in k2" href="../core_concepts/index.html" />
+    <link rel="prev" title="For developers" href="for_developers.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../index.html" class="icon icon-home"> k2
+          </a>
+              <div class="version">
+                1.19
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Installation</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="conda.html">Install using conda (Linux/macOS)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pip.html">Install using pip (k2-fsa.org)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pip_pypi.html">Install using pip (pypi.org)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="from_source.html">Install from source</a></li>
+<li class="toctree-l2"><a class="reference internal" href="for_developers.html">For developers</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">FAQs</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#importerror-lib64-libm-so-6-version-glibc-2-27-not-found">ImportError: /lib64/libm.so.6: version ‘GLIBC_2.27’ not found</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#error-downloading-https-github-com-pybind-pybind11-archive-v2-6-0-tar-gz-failed">error: Downloading https://github.com/pybind/pybind11/archive/v2.6.0.tar.gz failed</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#mkl-related-issues-on-macos">MKL related issues on macOS</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#error-invalid-device-function">Error: invalid device function</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="index.html#reporting-issues">Reporting issues</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../core_concepts/index.html">Core concepts in k2</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../python_tutorials/index.html">Python tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../python_api/index.html">Python API reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">k2</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content style-external-links">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="index.html">Installation</a> &raquo;</li>
+      <li>FAQs</li>
+      <li class="wy-breadcrumbs-aside">
+              <a href="https://github.com/k2-fsa/k2/blob/master/k2/docs/source/installation/faqs.rst" class="fa fa-github"> Edit on GitHub</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="faqs">
+<h1>FAQs<a class="headerlink" href="#faqs" title="Permalink to this headline"></a></h1>
+<section id="importerror-lib64-libm-so-6-version-glibc-2-27-not-found">
+<h2>ImportError: /lib64/libm.so.6: version ‘GLIBC_2.27’ not found<a class="headerlink" href="#importerror-lib64-libm-so-6-version-glibc-2-27-not-found" title="Permalink to this headline"></a></h2>
+<p>If you have this issue, it is very likely that you used <code class="docutils literal notranslate"><span class="pre">conda</span> <span class="pre">install</span></code>
+to install k2.</p>
+<p>The conda package is compiled using Ubuntu 18.04. If your system
+is too old, you will get such an issue.</p>
+<p>The most straightforward way to fix it is to <a class="reference internal" href="from_source.html#install-k2-from-source"><span class="std std-ref">Install from source</span></a>.</p>
+</section>
+<section id="error-downloading-https-github-com-pybind-pybind11-archive-v2-6-0-tar-gz-failed">
+<h2>error: Downloading <a class="reference external" href="https://github.com/pybind/pybind11/archive/v2.6.0.tar.gz">https://github.com/pybind/pybind11/archive/v2.6.0.tar.gz</a> failed<a class="headerlink" href="#error-downloading-https-github-com-pybind-pybind11-archive-v2-6-0-tar-gz-failed" title="Permalink to this headline"></a></h2>
+<p>If you have no access to the Internet, you will get such an issue when installing
+k2 from source.</p>
+<p>Please try to find a machine that has access to the Internet, download pybind11,
+and copy the downloaded file to the machine you use to compile k2.</p>
+<p>The commands you need are as follows:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># assume that you place the downloaded file in the /tmp directory</span>
+<span class="nb">cd</span> /tmp
+wget https://github.com/pybind/pybind11/archive/v2.6.0.tar.gz
+</pre></div>
+</div>
+<p>and then change <a class="reference external" href="https://github.com/k2-fsa/k2/blob/master/cmake/pybind11.cmake#L23">https://github.com/k2-fsa/k2/blob/master/cmake/pybind11.cmake#L23</a>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># set(pybind11_URL  &quot;https://github.com/pybind/pybind11/archive/v2.6.0.tar.gz&quot;)</span>
+<span class="nb">set</span><span class="p">(</span><span class="n">pybind11_URL</span>  <span class="s2">&quot;file:///tmp/v2.6.0.tar.gz&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="mkl-related-issues-on-macos">
+<h2>MKL related issues on macOS<a class="headerlink" href="#mkl-related-issues-on-macos" title="Permalink to this headline"></a></h2>
+<p>If you have the following error while importing <code class="docutils literal notranslate"><span class="pre">k2</span></code>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ python3 -c <span class="s2">&quot;import k2&quot;</span>
+Traceback <span class="o">(</span>most recent call last<span class="o">)</span>:
+  File <span class="s2">&quot;/Users/fangjun/software/miniconda3/envs/tt/lib/python3.8/site-packages/k2/__init__.py&quot;</span>, line <span class="m">24</span>, <span class="k">in</span> &lt;module&gt;
+    from _k2 import DeterminizeWeightPushingType
+ImportError: dlopen<span class="o">(</span>/Users/fangjun/software/miniconda3/envs/tt/lib/python3.8/site-packages/_k2.cpython-38-darwin.so, <span class="m">2</span><span class="o">)</span>: Library not loaded: @rpath/libmkl_intel_ilp64.2.dylib
+  Referenced from: /Users/fangjun/software/miniconda3/envs/tt/lib/python3.8/site-packages/_k2.cpython-38-darwin.so
+  Reason: image not found
+</pre></div>
+</div>
+<p>You can use the following commands to fix it:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ <span class="nb">cd</span> <span class="nv">$CONDA_PREFIX</span>/lib
+$ ls -lh libmkl_intel_ilp64.*
+</pre></div>
+</div>
+<p>It will show something like below:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ ls -lh libmkl_intel_ilp64.*
+-rwxrwxr-x  <span class="m">2</span> fangjun  staff    19M Oct <span class="m">18</span>  <span class="m">2021</span> libmkl_intel_ilp64.1.dylib
+-rwxrwxr-x  <span class="m">2</span> fangjun  staff    19M Oct <span class="m">18</span>  <span class="m">2021</span> libmkl_intel_ilp64.dylib
+</pre></div>
+</div>
+<p>The fix is to create a symlink inside <code class="docutils literal notranslate"><span class="pre">$CONDA_PREFIX/lib</span></code>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ ln -s libmkl_intel_ilp64.dylib libmkl_intel_ilp64.2.dylib
+</pre></div>
+</div>
+<p>After the above fix, you may get a different error like below:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ python3 -c <span class="s2">&quot;import k2&quot;</span>
+Traceback <span class="o">(</span>most recent call last<span class="o">)</span>:
+  File <span class="s2">&quot;/Users/fangjun/software/miniconda3/envs/tt/lib/python3.8/site-packages/k2/__init__.py&quot;</span>, line <span class="m">24</span>, <span class="k">in</span> &lt;module&gt;
+    from _k2 import DeterminizeWeightPushingType
+ImportError: dlopen<span class="o">(</span>/Users/fangjun/software/miniconda3/envs/tt/lib/python3.8/site-packages/_k2.cpython-38-darwin.so, <span class="m">2</span><span class="o">)</span>: Library not loaded: @rpath/libmkl_core.2.dylib
+  Referenced from: /Users/fangjun/software/miniconda3/envs/tt/lib/python3.8/site-packages/_k2.cpython-38-darwin.so
+  Reason: image not found
+</pre></div>
+</div>
+<p>Please follow the above approach to create another symlink for <code class="docutils literal notranslate"><span class="pre">libmkl_core.2.dylib</span></code>.</p>
+<p>In summary, the commands you need to fix mkl related issues are listed below:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ <span class="nb">cd</span> <span class="nv">$CONDA_PREFIX</span>/lib
+$ ln -s libmkl_intel_ilp64.dylib libmkl_intel_ilp64.2.dylib
+$ ln -s libmkl_core.dylib libmkl_core.2.dylib
+$ ln -s libmkl_intel_thread.dylib libmkl_intel_thread.2.dylib
+</pre></div>
+</div>
+</section>
+<section id="error-invalid-device-function">
+<h2>Error: invalid device function<a class="headerlink" href="#error-invalid-device-function" title="Permalink to this headline"></a></h2>
+<p>If you get the following error while running k2:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">F</span><span class="p">]</span> <span class="o">/</span><span class="n">xxx</span><span class="o">/</span><span class="n">k2</span><span class="o">/</span><span class="n">k2</span><span class="o">-</span><span class="n">latest</span><span class="o">/</span><span class="n">k2</span><span class="o">/</span><span class="n">csrc</span><span class="o">/</span><span class="nb">eval</span><span class="o">.</span><span class="n">h</span><span class="p">:</span><span class="mi">147</span><span class="p">:</span><span class="n">void</span> <span class="n">k2</span><span class="p">::</span><span class="n">EvalDevice</span><span class="p">(</span><span class="n">cudaStream_t</span><span class="p">,</span>
+<span class="n">int32_t</span><span class="p">,</span> <span class="n">LambdaT</span><span class="o">&amp;</span><span class="p">)</span> <span class="p">[</span><span class="k">with</span> <span class="n">LambdaT</span> <span class="o">=</span> <span class="n">__nv_dl_wrapper_t</span><span class="o">&lt;</span><span class="n">__nv_dl_tag</span><span class="o">&lt;</span><span class="n">k2</span><span class="p">::</span><span class="n">Array1</span><span class="o">&lt;</span><span class="nb">int</span><span class="o">&gt;</span>
+<span class="p">(</span><span class="o">*</span><span class="p">)(</span><span class="n">std</span><span class="p">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">k2</span><span class="p">::</span><span class="n">Context</span><span class="o">&gt;</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">),</span> <span class="n">k2</span><span class="p">::</span><span class="n">Range</span><span class="o">&lt;</span><span class="nb">int</span><span class="o">&gt;</span><span class="p">,</span> <span class="mi">1</span><span class="o">&gt;</span><span class="p">,</span> <span class="nb">int</span><span class="o">*</span><span class="p">,</span>
+<span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="o">&gt;</span><span class="p">;</span> <span class="n">cudaStream_t</span> <span class="o">=</span> <span class="n">CUstream_st</span><span class="o">*</span><span class="p">;</span> <span class="n">int32_t</span> <span class="o">=</span> <span class="nb">int</span><span class="p">]</span> <span class="n">Check</span> <span class="n">failed</span><span class="p">:</span>
+<span class="n">e</span> <span class="o">==</span> <span class="n">cudaSuccess</span> <span class="p">(</span><span class="mi">98</span> <span class="n">vs</span><span class="o">.</span> <span class="mi">0</span><span class="p">)</span>  <span class="n">Error</span><span class="p">:</span> <span class="n">invalid</span> <span class="n">device</span> <span class="n">function</span><span class="o">.</span>
+</pre></div>
+</div>
+<p>you have probably installed k2 from source. However, you are <code class="docutils literal notranslate"><span class="pre">NOT</span></code> running k2 on
+the same machine as the one you used to build k2 and the two machines have different
+types of GPUs.</p>
+<p>The fix is to pass <code class="docutils literal notranslate"><span class="pre">-DK2_BUILD_FOR_ALL_ARCHS=ON</span></code> to <code class="docutils literal notranslate"><span class="pre">cmake</span></code>.</p>
+<p>If you have followed <a class="reference internal" href="for_developers.html#installation-for-developers"><span class="std std-ref">For developers</span></a> to install k2, you need
+to change</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>cmake -DCMAKE_BUILD_TYPE<span class="o">=</span>Release ..
+</pre></div>
+</div>
+<p>to</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>cmake -DCMAKE_BUILD_TYPE<span class="o">=</span>Release -DK2_BUILD_FOR_ALL_ARCHS<span class="o">=</span>ON ..
+</pre></div>
+</div>
+<p>If you have followed <a class="reference internal" href="from_source.html#install-k2-from-source"><span class="std std-ref">Install from source</span></a> to install k2, you need to
+change</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git clone https://github.com/k2-fsa/k2.git
+<span class="nb">cd</span> k2
+python3 setup.py install
+</pre></div>
+</div>
+<p>to</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git clone https://github.com/k2-fsa/k2.git
+<span class="nb">cd</span> k2
+<span class="nb">export</span> <span class="nv">K2_CMAKE_ARGS</span><span class="o">=</span><span class="s2">&quot;-DK2_BUILD_FOR_ALL_ARCHS=ON&quot;</span>
+python3 setup.py install
+</pre></div>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="for_developers.html" class="btn btn-neutral float-left" title="For developers" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../core_concepts/index.html" class="btn btn-neutral float-right" title="Core concepts in k2" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2020-2022, k2 development team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+ <script type="text/javascript">
+    $(document).ready(function() {
+        $(".toggle > *").hide();
+        $(".toggle .header").show();
+        $(".toggle .header").click(function() {
+            $(this).parent().children().not(".header").toggle(400);
+            $(this).parent().children(".header").toggleClass("open");
+        })
+    });
+</script>
+
+
+</body>
+</html>
