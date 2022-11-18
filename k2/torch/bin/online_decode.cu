@@ -105,6 +105,7 @@ int main(int argc, char *argv[]) {
   // https://pytorch.org/docs/stable/notes/cpu_threading_torchscript_inference.html
   torch::set_num_threads(1);
   torch::set_num_interop_threads(1);
+  torch::NoGradGuard no_grad;
 
   std::string usage = R"(
   (1) CTC decoding
@@ -227,7 +228,7 @@ int main(int argc, char *argv[]) {
   std::vector<int32_t> positions(num_waves, 0);
 
   int32_t T = nnet_output.size(1);
-  int32_t chunk_size = 10;  // 20 frames per chunk
+  int32_t chunk_size = 50;  // 20 frames per chunk
 
   // simulate asynchronous decoding
   while (true) {

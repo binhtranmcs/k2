@@ -278,7 +278,7 @@ class MultiGraphDenseIntersectPruned {
     frames_.reserve(T + 2);
 
     if (T_ == 0) frames_.push_back(InitialFrameInfo());
-    int32_t prune_num_frames = 15, prune_shift = 10;
+    int32_t prune_num_frames = 55, prune_shift = 50;
 
     for (int32_t t = 0; t <= b_fsas_->shape.MaxSize(1); t++) {
       if (state_map_.NumKeyBits() == 32) {
