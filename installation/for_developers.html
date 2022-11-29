@@ -5,7 +5,7 @@
   <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>For developers &mdash; k2 1.22 documentation</title>
+  <title>For developers &mdash; k2 1.23.2 documentation</title>
       <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
       <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
       <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
@@ -32,7 +32,7 @@
             <a href="../index.html" class="icon icon-home"> k2
           </a>
               <div class="version">
-                1.22
+                1.23.2
               </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
@@ -114,6 +114,11 @@ git clone https://github.com/k2-fsa/k2.git
 </div>
 <p>To build a release version, use:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span> /some/path/k2
+
+<span class="c1"># If you are using torch 1.12.x, please run the following fix.</span>
+<span class="c1"># See https://github.com/pytorch/pytorch/issues/88290</span>
+python3 ./scripts/github_actions/fix_torch.py
+
 mkdir build_release
 <span class="nb">cd</span> build_release
 cmake -DCMAKE_BUILD_TYPE<span class="o">=</span>Release ..
@@ -145,6 +150,11 @@ python3 -c <span class="s2">&quot;import torch; import _k2; print(_k2.__file__)&
 </div>
 <p>To build a debug version, use:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span> /some/path/k2
+
+<span class="c1"># If you are using torch 1.12.x, please run the following fix.</span>
+<span class="c1"># See https://github.com/pytorch/pytorch/issues/88290</span>
+python3 ./scripts/github_actions/fix_torch.py
+
 mkdir build_debug
 <span class="nb">cd</span> build_debug
 cmake -DCMAKE_BUILD_TYPE<span class="o">=</span>Debug ..
