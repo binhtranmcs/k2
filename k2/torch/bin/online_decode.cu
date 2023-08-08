@@ -20,6 +20,7 @@
 #include <cstdlib>
 #include <string>
 #include <vector>
+#include <dirent.h>
 
 #include "k2/csrc/intersect_dense_pruned.h"
 #include "k2/torch/csrc/decode.h"
@@ -46,7 +47,7 @@ C10_DEFINE_string(tokens, "",
                   "Path to a tokens.txt. Needed if --use_ctc_decoding is true");
 // Fsa decoding related
 C10_DEFINE_double(search_beam, 20, "search_beam in IntersectDensePruned");
-C10_DEFINE_double(output_beam, 8, "output_beam in IntersectDensePruned");
+C10_DEFINE_double(output_beam, 20, "output_beam in IntersectDensePruned");
 C10_DEFINE_int(min_activate_states, 30,
                "min_activate_states in IntersectDensePruned");
 C10_DEFINE_int(max_activate_states, 10000,
@@ -146,214 +147,232 @@ int main(int argc, char *argv[]) {
     wave_filenames[i] = argv[i + 1];
   }
 
-  kaldifeat::FbankOptions fbank_opts;
-  fbank_opts.frame_opts.samp_freq = FLAGS_sample_rate;
-  fbank_opts.frame_opts.dither = 0;
-  fbank_opts.frame_opts.frame_shift_ms = FLAGS_frame_shift_ms;
-  fbank_opts.frame_opts.frame_length_ms = FLAGS_frame_length_ms;
-  fbank_opts.mel_opts.num_bins = FLAGS_num_bins;
-  fbank_opts.device = device;
-
-  kaldifeat::Fbank fbank(fbank_opts);
-
-  K2_LOG(INFO) << "Load wave files";
-  auto wave_data = k2::ReadWave(wave_filenames, FLAGS_sample_rate);
-
-  for (auto &w : wave_data) {
-    w = w.to(device);
-  }
-
-  K2_LOG(INFO) << "Compute features";
+  std::ofstream fout("fixk2.txt");
   std::vector<int64_t> num_frames;
-  auto features_vec = k2::ComputeFeatures(fbank, wave_data, &num_frames);
 
-  // Note: math.log(1e-10) is -23.025850929940457
-  auto features = torch::nn::utils::rnn::pad_sequence(features_vec, true,
-                                                      -23.025850929940457f);
+  DIR *dir; struct dirent *diread;
+  std::string path = "/home/cpu13266/binhtt4/clone/k2/build/tmp/tmpwav/";
+  if ((dir = opendir(path.c_str())) != nullptr) {
+    while ((diread = readdir(dir)) != nullptr) {
+      std::string filename = path + diread->d_name;
+      if (filename.find(".wav") == std::string::npos) continue;
 
-  K2_LOG(INFO) << "Load neural network model";
-  torch::jit::script::Module module = torch::jit::load(FLAGS_jit_pt);
-  module.eval();
-  module.to(device);
+      std::cout << diread->d_name << '\n';
+      fout << diread->d_name << ' ';
 
-  int32_t subsampling_factor = module.attr("subsampling_factor").toInt();
-  torch::Dict<std::string, torch::Tensor> sup;
-  sup.insert("sequence_idx", torch::arange(num_waves, torch::kInt));
-  sup.insert("start_frame", torch::zeros({num_waves}, torch::kInt));
-  sup.insert("num_frames",
-             torch::from_blob(num_frames.data(), {num_waves}, torch::kLong)
-                 .to(torch::kInt));
+      {
+        kaldifeat::FbankOptions fbank_opts;
+        fbank_opts.frame_opts.samp_freq = FLAGS_sample_rate;
+        fbank_opts.frame_opts.dither = 0;
+        fbank_opts.frame_opts.frame_shift_ms = FLAGS_frame_shift_ms;
+        fbank_opts.frame_opts.frame_length_ms = FLAGS_frame_length_ms;
+        fbank_opts.mel_opts.num_bins = FLAGS_num_bins;
+        fbank_opts.device = device;
 
-  torch::IValue supervisions(sup);
+        kaldifeat::Fbank fbank(fbank_opts);
 
-  std::vector<torch::IValue> inputs;
-  inputs.emplace_back(std::move(features));
-  inputs.emplace_back(supervisions);
+        K2_LOG(INFO) << "Load wave files";
+        auto wave_data = k2::ReadWave(std::vector<std::string>(1, filename), FLAGS_sample_rate);
 
-  K2_LOG(INFO) << "Compute nnet_output";
-  // the output for module.forward() is a tuple of 3 tensors
-  auto outputs = module.forward(inputs).toTuple();
-  assert(outputs->elements().size() == 3u);
-
-  auto nnet_output = outputs->elements()[0].toTensor();
-
-  k2::FsaClass decoding_graph;
-
-  if (FLAGS_use_ctc_decoding) {
-    K2_LOG(INFO) << "Build CTC topo";
-    decoding_graph =
-        k2::CtcTopo(nnet_output.size(2) - 1, /*modified*/ false, device);
-  } else {
-    K2_LOG(INFO) << "Load HLG.pt";
-    decoding_graph = k2::LoadFsa(FLAGS_hlg, device);
-    K2_CHECK(decoding_graph.HasTensorAttr("aux_labels") ||
-             decoding_graph.HasRaggedTensorAttr("aux_labels"));
-  }
-
-  K2_LOG(INFO) << "Decoding";
-
-  auto decoding_fsa = k2::FsaToFsaVec(decoding_graph.fsa);
-
-  k2::OnlineDenseIntersecter decoder(
-      decoding_fsa, FLAGS_num_streams, FLAGS_search_beam, FLAGS_output_beam,
-      FLAGS_min_activate_states, FLAGS_max_activate_states);
-
-  // store decode states for each waves
-  std::vector<k2::DecodeStateInfo> states_info(num_waves);
-
-  // decocding results for each waves
-  std::vector<std::string> texts(num_waves, "");
-
-  std::vector<int32_t> positions(num_waves, 0);
-
-  int32_t T = nnet_output.size(1);
-  int32_t chunk_size = 10;  // 10 frames per chunk
-
-  // simulate asynchronous decoding
-  while (true) {
-    k2::DecodeStateInfo dummy_state_info;
-    std::vector<k2::DecodeStateInfo*> current_states_info;
-    std::vector<int64_t> num_frame;
-    std::vector<torch::Tensor> current_nnet_output;
-    // which waves we are decoding now
-    std::vector<int32_t> current_wave_ids;
-
-    for (int32_t i = 0; i < num_waves; ++i) {
-      // this wave is done
-      if (num_frames[i] == 0) continue;
-
-      current_states_info.push_back(&states_info[i]);
-      current_wave_ids.push_back(i);
-
-      if (num_frames[i] <= chunk_size * subsampling_factor) {
-        num_frame.push_back(num_frames[i]);
-        num_frames[i] = 0;
-      } else {
-        num_frame.push_back(chunk_size * subsampling_factor);
-        num_frames[i] -= chunk_size * subsampling_factor;
-      }
-
-      int32_t start = positions[i],
-              end = start + chunk_size >= T ? T : start + chunk_size;
-      positions[i] = end;
-      auto sub_output = nnet_output.index(
-          {i, torch::indexing::Slice(start, end), torch::indexing::Slice()});
-
-      // padding T axis to chunk_size if needed
-      namespace F = torch::nn::functional;
-      sub_output = F::pad(sub_output,
-          F::PadFuncOptions({0, 0, 0, chunk_size - end + start})
-          .mode(torch::kConstant));
-
-      current_nnet_output.push_back(sub_output);
-
-      // we can only decode `FLAGS_num_streams` waves at a time
-      if (static_cast<int32_t>(current_wave_ids.size()) >= FLAGS_num_streams)
-        break;
-    }
-    if (current_wave_ids.size() == 0) break;  // finished
-
-    // no enough waves, feed in garbage data
-    while (static_cast<int32_t>(num_frame.size()) < FLAGS_num_streams) {
-      num_frame.push_back(0);
-      auto opts = torch::TensorOptions().dtype(nnet_output.dtype())
-        .device(nnet_output.device());
-      current_nnet_output.push_back(
-          torch::zeros({chunk_size, nnet_output.size(2)}, opts));
-      current_states_info.push_back(&dummy_state_info);
-    }
-
-    auto sub_nnet_output = torch::stack(current_nnet_output);
-
-    torch::Dict<std::string, torch::Tensor> sup;
-    sup.insert("sequence_idx", torch::arange(FLAGS_num_streams, torch::kInt));
-    sup.insert("start_frame", torch::zeros({FLAGS_num_streams}, torch::kInt));
-    sup.insert("num_frames",
-               torch::from_blob(num_frame.data(), {FLAGS_num_streams},
-                 torch::kLong).to(torch::kInt));
-    torch::IValue supervision(sup);
-
-    torch::Tensor supervision_segments =
-        k2::GetSupervisionSegments(supervision, subsampling_factor);
-
-    k2::DenseFsaVec dense_fsa_vec = k2::CreateDenseFsaVec(
-        sub_nnet_output, supervision_segments, subsampling_factor - 1);
-
-    k2::FsaVec fsa;
-    k2::Array1<int32_t> graph_arc_map;
-
-    decoder.Decode(dense_fsa_vec, &current_states_info, &fsa, &graph_arc_map);
-
-    k2::FsaClass lattice(fsa);
-    lattice.CopyAttrs(decoding_graph,
-                      k2::Array1ToTorch<int32_t>(graph_arc_map));
-
-    lattice = k2::ShortestPath(lattice);
-
-    auto ragged_aux_labels = k2::GetTexts(lattice);
-
-    auto aux_labels_vec = ragged_aux_labels.ToVecVec();
-
-    if (FLAGS_use_ctc_decoding) {
-      k2::SymbolTable symbol_table(FLAGS_tokens);
-      for (size_t i = 0; i < current_wave_ids.size(); ++i) {
-        std::string text;
-        for (auto id : aux_labels_vec[i]) {
-          text.append(symbol_table[id]);
+        for (auto &w : wave_data) {
+          w = w.to(device);
         }
-        texts[current_wave_ids[i]] = std::move(text);
-      }
-    } else {
-      k2::SymbolTable symbol_table(FLAGS_word_table);
-      for (size_t i = 0; i < current_wave_ids.size(); ++i) {
-        std::string text;
-        std::string sep = "";
-        for (auto id : aux_labels_vec[i]) {
-          text.append(sep);
-          text.append(symbol_table[id]);
-          sep = " ";
-        }
-        texts[current_wave_ids[i]] = text;
-      }
-    }
-    std::ostringstream os;
-    os << "\nPartial result:\n";
-    for (size_t i = 0; i != current_wave_ids.size(); ++i) {
-      os << wave_filenames[current_wave_ids[i]] << "\n";
-      os << texts[current_wave_ids[i]];
-      os << "\n\n";
-    }
-    K2_LOG(INFO) << os.str();
-  }
 
-  std::ostringstream os;
-  os << "\nDecoding result:\n";
-  for (int32_t i = 0; i != num_waves; ++i) {
-    os << wave_filenames[i] << "\n";
-    os << texts[i];
-    os << "\n\n";
+        K2_LOG(INFO) << "Compute features";
+        std::vector<int64_t> num_frames;
+        auto features_vec = k2::ComputeFeatures(fbank, wave_data, &num_frames);
+
+        // Note: math.log(1e-10) is -23.025850929940457
+        auto features = torch::nn::utils::rnn::pad_sequence(features_vec, true,
+            -23.025850929940457f);
+
+        K2_LOG(INFO) << "Load neural network model";
+        torch::jit::script::Module module = torch::jit::load(FLAGS_jit_pt);
+        module.eval();
+        module.to(device);
+
+        int32_t subsampling_factor = module.attr("subsampling_factor").toInt();
+        torch::Dict<std::string, torch::Tensor> sup;
+        sup.insert("sequence_idx", torch::arange(num_waves, torch::kInt));
+        sup.insert("start_frame", torch::zeros({num_waves}, torch::kInt));
+        sup.insert("num_frames",
+            torch::from_blob(num_frames.data(), {num_waves}, torch::kLong)
+                .to(torch::kInt));
+
+        torch::IValue supervisions(sup);
+
+        std::vector<torch::IValue> inputs;
+        inputs.emplace_back(std::move(features));
+        inputs.emplace_back(supervisions);
+
+        K2_LOG(INFO) << "Compute nnet_output";
+        // the output for module.forward() is a tuple of 3 tensors
+        auto outputs = module.forward(inputs).toTuple();
+        assert(outputs->elements().size() == 3u);
+
+        auto nnet_output = outputs->elements()[0].toTensor();
+
+        k2::FsaClass decoding_graph;
+
+        if (FLAGS_use_ctc_decoding) {
+          K2_LOG(INFO) << "Build CTC topo";
+          decoding_graph =
+              k2::CtcTopo(nnet_output.size(2) - 1, /*modified*/ false, device);
+        } else {
+          K2_LOG(INFO) << "Load HLG.pt";
+          decoding_graph = k2::LoadFsa(FLAGS_hlg, device);
+          K2_CHECK(decoding_graph.HasTensorAttr("aux_labels") ||
+              decoding_graph.HasRaggedTensorAttr("aux_labels"));
+        }
+
+        K2_LOG(INFO) << "Decoding";
+
+        auto decoding_fsa = k2::FsaToFsaVec(decoding_graph.fsa);
+
+        k2::OnlineDenseIntersecter decoder(
+            decoding_fsa, FLAGS_num_streams, FLAGS_search_beam, FLAGS_output_beam,
+            FLAGS_min_activate_states, FLAGS_max_activate_states);
+
+        // store decode states for each waves
+        std::vector<k2::DecodeStateInfo> states_info(num_waves);
+
+        // decocding results for each waves
+        std::vector<std::string> texts(num_waves, "");
+
+        std::vector<int32_t> positions(num_waves, 0);
+
+        int32_t T = nnet_output.size(1);
+        int32_t chunk_size = 10;  // 10 frames per chunk
+
+        // simulate asynchronous decoding
+        while (true) {
+          k2::DecodeStateInfo dummy_state_info;
+          std::vector<k2::DecodeStateInfo*> current_states_info;
+          std::vector<int64_t> num_frame;
+          std::vector<torch::Tensor> current_nnet_output;
+          // which waves we are decoding now
+          std::vector<int32_t> current_wave_ids;
+
+          for (int32_t i = 0; i < num_waves; ++i) {
+            // this wave is done
+            if (num_frames[i] == 0) continue;
+
+            current_states_info.push_back(&states_info[i]);
+            current_wave_ids.push_back(i);
+
+            if (num_frames[i] <= chunk_size * subsampling_factor) {
+              num_frame.push_back(num_frames[i]);
+              num_frames[i] = 0;
+            } else {
+              num_frame.push_back(chunk_size * subsampling_factor);
+              num_frames[i] -= chunk_size * subsampling_factor;
+            }
+
+            int32_t start = positions[i],
+                end = start + chunk_size >= T ? T : start + chunk_size;
+            positions[i] = end;
+            auto sub_output = nnet_output.index(
+                {i, torch::indexing::Slice(start, end), torch::indexing::Slice()});
+
+            // padding T axis to chunk_size if needed
+            namespace F = torch::nn::functional;
+            sub_output = F::pad(sub_output,
+                F::PadFuncOptions({0, 0, 0, chunk_size - end + start})
+                    .mode(torch::kConstant));
+
+            current_nnet_output.push_back(sub_output);
+
+            // we can only decode `FLAGS_num_streams` waves at a time
+            if (static_cast<int32_t>(current_wave_ids.size()) >= FLAGS_num_streams)
+              break;
+          }
+          if (current_wave_ids.size() == 0) break;  // finished
+
+          // no enough waves, feed in garbage data
+          while (static_cast<int32_t>(num_frame.size()) < FLAGS_num_streams) {
+            num_frame.push_back(0);
+            auto opts = torch::TensorOptions().dtype(nnet_output.dtype())
+                .device(nnet_output.device());
+            current_nnet_output.push_back(
+                torch::zeros({chunk_size, nnet_output.size(2)}, opts));
+            current_states_info.push_back(&dummy_state_info);
+          }
+
+          auto sub_nnet_output = torch::stack(current_nnet_output);
+
+          torch::Dict<std::string, torch::Tensor> sup;
+          sup.insert("sequence_idx", torch::arange(FLAGS_num_streams, torch::kInt));
+          sup.insert("start_frame", torch::zeros({FLAGS_num_streams}, torch::kInt));
+          sup.insert("num_frames",
+              torch::from_blob(num_frame.data(), {FLAGS_num_streams},
+                  torch::kLong).to(torch::kInt));
+          torch::IValue supervision(sup);
+
+          torch::Tensor supervision_segments =
+              k2::GetSupervisionSegments(supervision, subsampling_factor);
+
+          k2::DenseFsaVec dense_fsa_vec = k2::CreateDenseFsaVec(
+              sub_nnet_output, supervision_segments, subsampling_factor - 1);
+
+          k2::FsaVec fsa;
+          k2::Array1<int32_t> graph_arc_map;
+
+          decoder.Decode(dense_fsa_vec, &current_states_info, &fsa, &graph_arc_map);
+
+          k2::FsaClass lattice(fsa);
+          lattice.CopyAttrs(decoding_graph,
+              k2::Array1ToTorch<int32_t>(graph_arc_map));
+
+          lattice = k2::ShortestPath(lattice);
+
+          auto ragged_aux_labels = k2::GetTexts(lattice);
+
+          auto aux_labels_vec = ragged_aux_labels.ToVecVec();
+
+          if (FLAGS_use_ctc_decoding) {
+            k2::SymbolTable symbol_table(FLAGS_tokens);
+            for (size_t i = 0; i < current_wave_ids.size(); ++i) {
+              std::string text;
+              for (auto id : aux_labels_vec[i]) {
+                text.append(symbol_table[id]);
+              }
+              texts[current_wave_ids[i]] = std::move(text);
+            }
+          } else {
+            k2::SymbolTable symbol_table(FLAGS_word_table);
+            for (size_t i = 0; i < current_wave_ids.size(); ++i) {
+              std::string text;
+              std::string sep = "";
+              for (auto id : aux_labels_vec[i]) {
+                text.append(sep);
+                text.append(symbol_table[id]);
+                sep = " ";
+              }
+              texts[current_wave_ids[i]] = text;
+            }
+          }
+          std::ostringstream os;
+          os << "\nPartial result:\n";
+          for (size_t i = 0; i != current_wave_ids.size(); ++i) {
+            os << wave_filenames[current_wave_ids[i]] << "\n";
+            os << texts[current_wave_ids[i]];
+            os << "\n\n";
+          }
+          K2_LOG(INFO) << os.str();
+        }
+
+        std::ostringstream os;
+        os << "\nDecoding result:\n";
+        for (int32_t i = 0; i != num_waves; ++i) {
+          os << wave_filenames[i] << "\n";
+          os << texts[i];
+          os << "\n\n";
+        }
+        fout << texts[0] << std::endl;
+        K2_LOG(INFO) << os.str();
+      }
+    }
   }
-  K2_LOG(INFO) << os.str();
 
   return 0;
 }
