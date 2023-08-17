@@ -7,7 +7,7 @@ execute_process(
   OUTPUT_VARIABLE TORCH_DIR
 )
 
-list(APPEND CMAKE_PREFIX_PATH "${TORCH_DIR}")
+# list(APPEND CMAKE_PREFIX_PATH "${TORCH_DIR}") # comment this out to find the "correct" Torch
 find_package(Torch REQUIRED)
 
 # set the global CMAKE_CXX_FLAGS so that
