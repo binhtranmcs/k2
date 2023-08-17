@@ -7,11 +7,8 @@ execute_process(
   OUTPUT_VARIABLE TORCH_DIR
 )
 
-list(APPEND CMAKE_PREFIX_PATH "${TORCH_DIR}")
-
-if(NOT DEFINED TORCH_LIBRARY)
-  find_package(Torch REQUIRED)
-endif()
+# list(APPEND CMAKE_PREFIX_PATH "${TORCH_DIR}") # comment this out to find the "correct" Torch
+find_package(Torch REQUIRED)
 
 # set the global CMAKE_CXX_FLAGS so that
 # k2 uses the same abi flag as PyTorch

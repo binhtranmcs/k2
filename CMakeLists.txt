@@ -23,7 +23,7 @@ if(POLICY CMP0074)
   cmake_policy(SET CMP0074 NEW)
 endif()
 
-set(CMAKE_DISABLE_FIND_PACKAGE_MKL TRUE)
+# set(CMAKE_DISABLE_FIND_PACKAGE_MKL TRUE)
 
 set(languages CXX)
 set(_K2_WITH_CUDA ON)
@@ -178,9 +178,7 @@ execute_process(COMMAND
   ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE
 )
 
-if(NOT CMAKE_CXX_STANDARD)
-  set(CMAKE_CXX_STANDARD 14 CACHE STRING "The C++ version to be used.")
-endif()
+set(CMAKE_CXX_STANDARD 17 CACHE STRING "The C++ version to be used.")
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 message(STATUS "C++ Standard version: ${CMAKE_CXX_STANDARD}")
@@ -205,6 +203,10 @@ endif()
 
 # ========= Settings for CUB begin =========
 # the following settings are modified from cub/CMakeLists.txt
+set(CMAKE_CXX_STANDARD 17 CACHE STRING "The C++ version to be used.")
+set(CMAKE_CXX_EXTENSIONS OFF)
+
+message(STATUS "C++ Standard version: ${CMAKE_CXX_STANDARD}")
 
 if(K2_WITH_CUDA)
   # Force CUDA C++ standard to be the same as the C++ standard used.
@@ -436,3 +438,5 @@ install(FILES
   ${PROJECT_SOURCE_DIR}/k2/python/k2/torch_version.py
   DESTINATION ./
 )
+
+message(STATUS "??? ${CMAKE_CXX_FLAGS}")
