@@ -18,6 +18,8 @@
 
 #include <utility>
 
+#include "dense_fsa_vec.h"
+#include "k2/csrc/intersect_dense_pruned.h"
 #include "k2/csrc/ragged_ops.h"
 #include "k2/csrc/rnnt_decode.h"
 #include "k2/csrc/torch_util.h"
@@ -237,6 +239,68 @@ FsaClassPtr FormatOutput(RnntStreamsPtr rnnt_streams,
   FsaClass lattice(ofsa);
   lattice.CopyAttrs(graphs, arc_map);
   return std::make_shared<FsaClass>(lattice);
+}
+
+struct OnlineDecoderConfig {
+  int num_streams;
+  int search_beam;
+  int output_beam;
+  int min_activate_states;
+  int max_activate_states;
+};
+
+struct OnlineDecoder {
+  std::shared_ptr<OnlineDenseIntersecter> decoder;
+  FsaClassPtr graph;
+  int num_streams;
+};
+
+OnlineDecoderPtr CreateOnlineDecoderPtr(const std::string &filename,
+                                        OnlineDecoderConfig config,
+                                        torch::Device map_location) {
+  OnlineDecoder decoder;
+
+  decoder.num_streams = config.num_streams;
+  decoder.graph = LoadFsaClass(filename, map_location);
+  auto decoding_fsa = k2::FsaToFsaVec(decoder.graph->fsa);
+  decoder.decoder = std::make_shared<OnlineDenseIntersecter>(
+      decoding_fsa, config.num_streams, config.search_beam, config.output_beam,
+      config.min_activate_states, config.max_activate_states);
+
+  return std::make_shared<OnlineDecoder>(decoder);
+}
+
+FsaClassPtr AdvanceOnlineDecoding(
+    OnlineDecoderPtr decoder, torch::Tensor log_probs,
+    std::vector<int> &num_frames,
+    std::vector<DecodeStateInfo *> *current_states_info,
+    int subsampling_factor) {
+  int num_streams = decoder->num_streams;
+
+  num_frames.resize(num_streams, 0);
+  torch::Tensor log_prob_lens =
+      torch::from_blob(num_frames.data(), {num_streams}, torch::kInt32);
+
+  torch::Tensor supervision_segments =
+      torch::stack({torch::arange(num_streams, torch::kInt),
+                    torch::zeros({num_streams}, torch::kInt),
+                    log_prob_lens.to(torch::kInt)},
+                   1)
+          .to(torch::kCPU);
+
+  DenseFsaVec dense_fsa_vec = CreateDenseFsaVec(
+      std::move(log_probs), supervision_segments, subsampling_factor - 1);
+
+  FsaVec fsa;
+  Array1<int32_t> graph_arc_map;
+
+  decoder->decoder->Decode(dense_fsa_vec, current_states_info, &fsa,
+                           &graph_arc_map);
+
+  FsaClassPtr lattice = std::make_shared<FsaClass>(fsa);
+  lattice->CopyAttrs(*decoder->graph, Array1ToTorch<int32_t>(graph_arc_map));
+
+  return lattice;
 }
 
 }  // namespace k2

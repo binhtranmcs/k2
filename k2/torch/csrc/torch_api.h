@@ -319,6 +319,23 @@ FsaClassPtr FormatOutput(RnntStreamsPtr rnnt_streams,
                          std::vector<int32_t> num_frames,
                          bool allow_partial = false);
 
+struct OnlineDecoderConfig;
+
+struct OnlineDecoder;
+using OnlineDecoderPtr = std::shared_ptr<OnlineDecoder>;
+
+struct DecodeStateInfo;
+
+OnlineDecoderPtr CreateOnlineDecoderPtr(
+    const std::string &filename, OnlineDecoderConfig config,
+    torch::Device map_location = torch::kCPU);
+
+FsaClassPtr AdvanceOnlineDecoding(
+    OnlineDecoderPtr decoder, torch::Tensor log_probs,
+    std::vector<int> &num_frames,
+    std::vector<DecodeStateInfo *> *current_states_info,
+    int subsampling_factor);
+
 }  // namespace k2
 
 #endif  // K2_TORCH_CSRC_TORCH_API_H_
