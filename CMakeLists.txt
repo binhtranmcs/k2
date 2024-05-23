@@ -23,16 +23,18 @@ if(POLICY CMP0074)
   cmake_policy(SET CMP0074 NEW)
 endif()
 
+set(CMAKE_CUDA_ARCHITECTURES 50 60 70 75 86)
+set(CMAKE_CUDA_COMPILER /usr/local/cuda/bin/nvcc)
 set(CMAKE_DISABLE_FIND_PACKAGE_MKL TRUE)
 
 set(languages CXX)
 set(_K2_WITH_CUDA ON)
 
-find_program(K2_HAS_NVCC nvcc)
-if(NOT K2_HAS_NVCC AND "$ENV{CUDACXX}" STREQUAL "")
-  message(STATUS "No NVCC detected. Disable CUDA support")
-  set(_K2_WITH_CUDA OFF)
-endif()
+#find_program(K2_HAS_NVCC nvcc)
+#if(NOT K2_HAS_NVCC AND "$ENV{CUDACXX}" STREQUAL "")
+#  message(STATUS "No NVCC detected. Disable CUDA support")
+#  set(_K2_WITH_CUDA OFF)
+#endif()
 
 if(APPLE OR (DEFINED K2_WITH_CUDA AND NOT K2_WITH_CUDA))
   if(_K2_WITH_CUDA)
@@ -179,7 +181,7 @@ execute_process(COMMAND
 )
 
 if(NOT CMAKE_CXX_STANDARD)
-  set(CMAKE_CXX_STANDARD 14 CACHE STRING "The C++ version to be used.")
+  set(CMAKE_CXX_STANDARD 17 CACHE STRING "The C++ version to be used.")
 endif()
 set(CMAKE_CXX_EXTENSIONS OFF)
 
@@ -191,20 +193,24 @@ check_include_file_cxx(execinfo.h K2_HAVE_EXECINFO_H)
 
 include(CheckCXXCompilerFlag)
 if(NOT WIN32)
-  check_cxx_compiler_flag("-std=c++${CMAKE_CXX_STANDARD}" K2_COMPILER_SUPPORTS_CXX${CMAKE_CXX_STANDARD})
+  check_cxx_compiler_flag("-std=c++17" K2_COMPILER_SUPPORTS_CXX17)
 else()
   # windows x86 or x86_64
-  check_cxx_compiler_flag("/std:c++${CMAKE_CXX_STANDARD}" K2_COMPILER_SUPPORTS_CXX${CMAKE_CXX_STANDARD})
+  check_cxx_compiler_flag("/std:c++17" K2_COMPILER_SUPPORTS_CXX17)
 endif()
-if(NOT K2_COMPILER_SUPPORTS_CXX${CMAKE_CXX_STANDARD})
+if(NOT K2_COMPILER_SUPPORTS_CXX17)
   message(FATAL_ERROR "
-    k2 requires a compiler supporting at least C++${CMAKE_CXX_STANDARD}.
+    k2 requires a compiler supporting at least C++17.
     If you are using GCC, please upgrade it to at least version 7.0.
     If you are using Clang, please upgrade it to at least version 3.4.")
 endif()
 
 # ========= Settings for CUB begin =========
 # the following settings are modified from cub/CMakeLists.txt
+set(CMAKE_CXX_STANDARD 17 CACHE STRING "The C++ version to be used.")
+set(CMAKE_CXX_EXTENSIONS OFF)
+
+message(STATUS "C++ Standard version: ${CMAKE_CXX_STANDARD}")
 
 if(K2_WITH_CUDA)
   # Force CUDA C++ standard to be the same as the C++ standard used.
