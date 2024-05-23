@@ -61,7 +61,7 @@ if(NOT K2_WITH_CUDA)
 endif()
 
 add_executable(online_decode ${online_decode_srcs})
-set_property(TARGET online_decode PROPERTY CXX_STANDARD ${CMAKE_CXX_STANDARD})
+set_property(TARGET online_decode PROPERTY CXX_STANDARD 17)
 target_link_libraries(online_decode ${bin_dep_libs})
 
 #-------------------------------------------

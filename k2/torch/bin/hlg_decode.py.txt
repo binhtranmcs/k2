@@ -523,7 +523,7 @@ def decode_one_batch(
         decoding_graph=decoding_graph,
         subsampling_factor=params.subsampling_factor,
     )
-    am_scores, lm_scores, token_ids = nbest_listing(lattice, num_paths=20, nbest_scale=1.0)
+    am_scores, lm_scores, token_ids = nbest_listing(lattice, num_paths=10, nbest_scale=1.0)
 
     # best_path = one_best_decoding(lattice=lattice, use_double_scores=True)
     #
